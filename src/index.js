@@ -11,12 +11,12 @@ import * as serviceWorker from './serviceWorker';
 const target = document.getElementById('root');
 
 render(
-	<Provider store={store}>
-    <ConnectedRouter history={history}>
-      <App />
-    </ConnectedRouter>
-  </Provider>,
-  target
+    <Provider store={store}>
+        <ConnectedRouter history={history}>
+            <App />
+        </ConnectedRouter>
+    </Provider>,
+    target
 );
 
 // If you want your app to work offline and load faster, you can change
