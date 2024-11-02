@@ -1,20 +1,16 @@
-export default function cityIdRequest(
-    stateName = 'rj',
-    cityName = 'Rio de Janeiro'
+export default async function cityIdRequest(
+    stateName = 'SP',
+    cityName = 'São Paulo'
 ) {
-    return fetch(
-        `https://cors-anywhere.herokuapp.com/https://api-content.ingresso.com/v0/states/${stateName}`
-    )
-        .then(function (response) {
-            return response.json();
-        })
-        .then((response) => {
-            let cityArray = response.cities.filter((city) => {
-                if (city.name === cityName) {
-                    return true;
-                }
-                return false;
-            });
-            return cityArray[0].id;
-        });
+    const url = `https://api-content.ingresso.com/v0/states/${stateName}`;
+    const response = await fetch(url);
+    const data = await response.json();
+
+    let cityArray = data.cities.filter((city) => {
+        if (city.name === cityName) {
+            return true;
+        }
+        return false;
+    });
+    return cityArray[0].id;
 }

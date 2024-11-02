@@ -1,17 +1,6 @@
 /* jshint loopfunc: false */
-
+// "use client"
 import React, { Component } from 'react';
-import { withRouter } from 'react-router-dom';
-
-import omdbRequest from '../requests/omdbRequester';
-import omdbTryHardRequest from '../requests/omdbTryHardRequester';
-import cityIdRequest from '../requests/cityIdRequester';
-import movieIdRequest from '../requests/movieIdRequester';
-import sessionRequest from '../requests/sessionsRequester';
-import availableMoviesRequest from '../requests/availableMoviesRequester';
-
-import distanceCalculator from '../utils/distanceCalculator';
-import GenreHelpList from './GenreHelpList';
 
 import Table from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
@@ -19,7 +8,7 @@ import TableCell from '@material-ui/core/TableCell';
 import TableHead from '@material-ui/core/TableHead';
 import TableRow from '@material-ui/core/TableRow';
 import Button from '@material-ui/core/Button';
-import { Slider, Tooltip, Hidden, Switch } from '@material-ui/core';
+import { Slider, Tooltip, Hidden, Switch, Divider } from '@material-ui/core';
 import IconButton from '@material-ui/core/IconButton';
 import {
     TextField,
@@ -48,8 +37,44 @@ import SearchIcon from '@material-ui/icons/Search';
 import ArrowUpwardIcon from '@material-ui/icons/ArrowUpward';
 import StarIcon from '@material-ui/icons/Star';
 import HelpIcon from '@material-ui/icons/Help';
+import omdbTryHardRequest from '../src/requests/omdbTryHardRequester';
+import omdbRequest from '../src/requests/omdbRequester';
+import movieIdRequest from '../src/requests/movieIdRequester';
+import sessionRequest from '../src/requests/sessionsRequester';
+import distanceCalculator from '../src/utils/distanceCalculator';
+import GenreHelpList from '../src/components/GenreHelpList';
 
-class Home extends Component {
+interface HomeState {
+    movie: string;
+    originalMovie: string;
+    movieInfo: Record<string, any>;
+    cityId: string;
+    movieId: string;
+    availableMovies: Array<any>;
+    sessionsInfo: Array<any>;
+    sessionInfoIsReady: boolean;
+    currentGeographicPosition: {
+        latitude: string;
+        longitude: string;
+    };
+    sessionTableSortColumn: string;
+    sessionTableSortDirection: number;
+    sessionTable: Array<any>;
+    cardsToShow: number;
+    cardFirst: number;
+    cardTotal: number;
+    showFilter: boolean;
+    filter: {
+        genre: string;
+        title: string;
+    };
+    genreHelpListOpen: boolean;
+    movieCardsAreReady: boolean;
+    trailer: Array<any>;
+}
+
+class Home extends Component<{}, HomeState> {
+    movieInfoTableRef: React.RefObject<HTMLDivElement>;
     constructor(props) {
         super(props);
         this.state = {
@@ -71,13 +96,14 @@ class Home extends Component {
             cardsToShow: 5,
             cardFirst: 0,
             cardTotal: 0,
-            showFilter: 0,
+            showFilter: false,
             filter: {
                 genre: '',
                 title: '',
             },
             genreHelpListOpen: false,
             movieCardsAreReady: false,
+            trailer: [],
         };
 
         this.onTextFieldChange = this.onTextFieldChange.bind(this);
@@ -85,25 +111,33 @@ class Home extends Component {
         this.onFetchMovieButtonClick = this.onFetchMovieButtonClick.bind(this);
         this.movieInfoTableRef = React.createRef();
     }
-    componentDidMount() {
+    async componentDidMount() {
         omdbTryHardRequest('Alcatraz: Escapada Impossível 2.0 - Escape Route');
         this.getLocation();
-        cityIdRequest().then((res) =>
-            this.setState(
-                {
-                    cityId: res,
-                },
-                () => {
-                    availableMoviesRequest().then((res) =>
-                        this.setState(
-                            { availableMovies: res, cardTotal: res.length },
-                            () => {
-                                this.getImdbRantingbyTitle();
-                            }
-                        )
-                    );
-                }
-            )
+        const cityIdResponse = await fetch(
+            '/api/state?state=SP&cityName=São Paulo'
+        );
+        const cityId = await cityIdResponse.json();
+        this.setState(
+            {
+                cityId: cityId,
+            },
+            async () => {
+                const moviesResponse = await fetch(
+                    `/api/movies?cityId=${cityId}`
+                );
+                const moviesData = await moviesResponse.json();
+
+                this.setState(
+                    {
+                        availableMovies: moviesData,
+                        cardTotal: moviesData.length,
+                    },
+                    () => {
+                        this.getImdbRantingbyTitle();
+                    }
+                );
+            }
         );
     }
 
@@ -115,7 +149,7 @@ class Home extends Component {
     onPrintStateButtonClick(e) {
         console.log(this.state);
     }
-    onFetchMovieButtonClick = (e) => {
+    onFetchMovieButtonClick = () => {
         omdbRequest(this.state.originalMovie).then((res) => {
             this.setState(
                 {
@@ -270,8 +304,16 @@ class Home extends Component {
         return (
             <Grid>
                 <Typography>
-                    <Grid container alignItems="center" justify="flex-start">
-                        <img alt="" height="100px" src={movie.images[0].url} />
+                    <Grid
+                        container
+                        alignItems="center"
+                        justifyContent="flex-start"
+                    >
+                        <img
+                            alt=""
+                            height="100px"
+                            src={movie?.images[0]?.url}
+                        />
                         {movie.title}
                         {iconComponentsArray}
                     </Grid>
@@ -404,17 +446,15 @@ class Home extends Component {
         this.setState({ cardTotal: cardTotalNumber });
     }
     handleFilterSwitchChange() {
-        this.state.showFilter === 0
-            ? this.setState({ showFilter: 1 })
-            : this.setState({ showFilter: 0 });
+        this.state.showFilter === false
+            ? this.setState({ showFilter: true })
+            : this.setState({ showFilter: false });
     }
-
     render() {
-        // if (this.state.movie) {
-        if (true) {
+        if (this.state.movie) {
             return (
                 <div style={{ overflow: 'hidden' }}>
-                    <AppBar display="none" position="static">
+                    <AppBar position="static">
                         <Toolbar>
                             <img
                                 alt="Sem Imagem"
@@ -427,19 +467,19 @@ class Home extends Component {
                             <Typography variant="h6">Vai ver o que?</Typography>
                         </Toolbar>
                     </AppBar>
-                    <Grid container justify="center">
+                    <Grid container justifyContent="center">
                         <Grid item xs={12}>
                             <Grid
                                 container
                                 alignItems={'center'}
-                                justify={'center'}
+                                justifyContent={'center'}
                                 spacing={8}
                             >
                                 <Grid item xs={12}>
                                     {/* <Button color="secondary" fullWidth={true} onClick={this.onPrintStateButtonClick}>Print State</Button> */}
                                 </Grid>
                             </Grid>
-                            <Grid container justify={'center'}>
+                            <Grid container justifyContent={'center'}>
                                 <Grid item xs={12} style={{ margin: '1%' }}>
                                     <Paper style={{ padding: '1%' }}>
                                         <Grid container>
@@ -458,7 +498,6 @@ class Home extends Component {
                                                     onChange={(e) =>
                                                         this.handleFilterSwitchChange()
                                                     }
-                                                    value="checkedA"
                                                     inputProps={{
                                                         'aria-label':
                                                             'secondary checkbox',
@@ -497,7 +536,8 @@ class Home extends Component {
                                                                     ) =>
                                                                         this.setState(
                                                                             {
-                                                                                genreHelpListOpen: false,
+                                                                                genreHelpListOpen:
+                                                                                    false,
                                                                             }
                                                                         )
                                                                     }
@@ -506,7 +546,8 @@ class Home extends Component {
                                                                     ) =>
                                                                         this.setState(
                                                                             {
-                                                                                genreHelpListOpen: true,
+                                                                                genreHelpListOpen:
+                                                                                    true,
                                                                             }
                                                                         )
                                                                     }
@@ -781,26 +822,60 @@ class Home extends Component {
                                     </Paper>
                                 </Grid>
 
-                                {/* <Grid item xs={4}>
-              <Paper style={{ padding: "1%" }}>
-              
-              <Typography variant="h6"> Filme Selecionado:</Typography>
-              <FormControl value={"this.state.movie"} fullWidth={true}>
-              <Select
-              value={JSON.stringify({ title: this.state.movie, originalTitle: this.state.originalMovie, trailer: this.state.trailer })}
-              onChange={(e) => this.handleMovieSelector(e)}
-              >
-              {this.state.availableMovies.length ?
-                this.state.availableMovies.map(movie =>
-                  <MenuItem style={{ height: "5%" }} key={movie.title} value={JSON.stringify({ title: movie.title, originalTitle: movie.originalTitle, trailer: movie.trailers })}>{
-                    this.returnStyledMenuItemContent(movie)
-                  }</MenuItem>
-                  )
-                  : null}
-                  </Select>
-                  </FormControl>
-                  </Paper>
-                </Grid> */}
+                                <Grid item xs={4}>
+                                    <Paper style={{ padding: '1%' }}>
+                                        <Typography variant="h6">
+                                            {' '}
+                                            Filme Selecionado:
+                                        </Typography>
+                                        <FormControl
+                                            value={'this.state.movie'}
+                                            fullWidth={true}
+                                        >
+                                            <Select
+                                                value={JSON.stringify({
+                                                    title: this.state.movie,
+                                                    originalTitle:
+                                                        this.state
+                                                            .originalMovie,
+                                                    trailer: this.state.trailer,
+                                                })}
+                                                onChange={(e) =>
+                                                    this.handleMovieSelector(e)
+                                                }
+                                            >
+                                                {this.state.availableMovies
+                                                    .length
+                                                    ? this.state.availableMovies.map(
+                                                          (movie) => (
+                                                              <MenuItem
+                                                                  style={{
+                                                                      height: '5%',
+                                                                  }}
+                                                                  key={
+                                                                      movie.title
+                                                                  }
+                                                                  value={JSON.stringify(
+                                                                      {
+                                                                          title: movie.title,
+                                                                          originalTitle:
+                                                                              movie.originalTitle,
+                                                                          trailer:
+                                                                              movie.trailers,
+                                                                      }
+                                                                  )}
+                                                              >
+                                                                  {this.returnStyledMenuItemContent(
+                                                                      movie
+                                                                  )}
+                                                              </MenuItem>
+                                                          )
+                                                      )
+                                                    : null}
+                                            </Select>
+                                        </FormControl>
+                                    </Paper>
+                                </Grid>
                                 <Grid item xs={12} style={{ margin: '1%' }}>
                                     <Paper style={{ padding: '1%' }}>
                                         {this.state.movieCardsAreReady ? (
@@ -812,7 +887,7 @@ class Home extends Component {
                                                 </Typography>
                                                 <Grid
                                                     container
-                                                    justify="space-between"
+                                                    justifyContent="space-between"
                                                     alignItems="center"
                                                 >
                                                     <Hidden xsDown>
@@ -897,6 +972,9 @@ class Home extends Component {
                                                                       ) {
                                                                           return (
                                                                               <Grid
+                                                                                  key={
+                                                                                      movie.title
+                                                                                  }
                                                                                   item
                                                                                   xs={
                                                                                       2
@@ -908,7 +986,7 @@ class Home extends Component {
                                                                                   <Grid
                                                                                       container
                                                                                       alignItems="center"
-                                                                                      justify="center"
+                                                                                      justifyContent="center"
                                                                                   >
                                                                                       <Button
                                                                                           border={
@@ -924,14 +1002,6 @@ class Home extends Component {
                                                                                           }
                                                                                       >
                                                                                           <img
-                                                                                              onError={(
-                                                                                                  e
-                                                                                              ) => {
-                                                                                                  e.target.onerror =
-                                                                                                      null;
-                                                                                                  e.target.src =
-                                                                                                      'https://secureservercdn.net/184.168.47.225/3f4.48c.myftpupload.com/wp-content/uploads/2017/04/404PosterNotFound.jpg?time=1568012822';
-                                                                                              }}
                                                                                               alt=""
                                                                                               style={{
                                                                                                   margin: '1%',
@@ -940,8 +1010,8 @@ class Home extends Component {
                                                                                               }}
                                                                                               src={
                                                                                                   movie
-                                                                                                      .images[0]
-                                                                                                      .url
+                                                                                                      ?.images[0]
+                                                                                                      ?.url
                                                                                               }
                                                                                           />
                                                                                       </Button>
@@ -1022,7 +1092,7 @@ class Home extends Component {
                                                 </Grid>
                                                 <Grid
                                                     container
-                                                    justify="center"
+                                                    justifyContent="center"
                                                 >
                                                     <Grid
                                                         item
@@ -1067,8 +1137,7 @@ class Home extends Component {
                                         ) : (
                                             <Grid
                                                 container
-                                                justify="center"
-                                                spacing={40}
+                                                justifyContent="center"
                                             >
                                                 <Grid item xs={12}>
                                                     <Typography
@@ -1197,14 +1266,6 @@ class Home extends Component {
                                                                                             .movieInfo
                                                                                             .Poster
                                                                                     }
-                                                                                    onError={(
-                                                                                        e
-                                                                                    ) => {
-                                                                                        e.target.onerror =
-                                                                                            null;
-                                                                                        e.target.src =
-                                                                                            'https://secureservercdn.net/184.168.47.225/3f4.48c.myftpupload.com/wp-content/uploads/2017/04/404PosterNotFound.jpg?time=1568012822';
-                                                                                    }}
                                                                                 />
                                                                             </a>
                                                                         </div>
@@ -1312,14 +1373,6 @@ class Home extends Component {
                                                                             .movieInfo
                                                                             .Poster
                                                                     }
-                                                                    onError={(
-                                                                        e
-                                                                    ) => {
-                                                                        e.target.onerror =
-                                                                            null;
-                                                                        e.target.src =
-                                                                            'https://secureservercdn.net/184.168.47.225/3f4.48c.myftpupload.com/wp-content/uploads/2017/04/404PosterNotFound.jpg?time=1568012822';
-                                                                    }}
                                                                 />
                                                             </a>
                                                         </Grid>
@@ -1541,7 +1594,7 @@ class Home extends Component {
                                         </Hidden>
                                     </div>
                                 ) : (
-                                    <Grid container justify="center">
+                                    <Grid container justifyContent="center">
                                         {' '}
                                         <Grid item xs={11}>
                                             <Typography
@@ -1704,14 +1757,14 @@ class Home extends Component {
                     <Grid
                         container
                         alignItems={'center'}
-                        justify={'center'}
+                        justifyContent={'center'}
                         spacing={8}
                     >
                         <Grid item>
                             {/* <Button color="secondary" fullWidth={true} onClick={this.onPrintStateButtonClick}>Print State</Button> */}
                         </Grid>
                     </Grid>
-                    <Grid container justify={'center'}>
+                    <Grid container justifyContent={'center'}>
                         <Grid item xs={4}>
                             <Typography style={{ margin: '5%' }}>
                                 Selecione o Filme:
@@ -1756,12 +1809,12 @@ class Home extends Component {
                             </FormControl>
                         </Grid>
                     </Grid>
-                    <Grid container justify="center">
+                    <Grid container justifyContent="center">
                         <Paper style={{ margin: '50px', padding: '30px' }}>
                             <Typography variant="h4">
                                 <Grid
                                     container
-                                    justify="center"
+                                    justifyContent="center"
                                     alignItems="center"
                                 >
                                     <ArrowUpwardIcon
@@ -1778,4 +1831,4 @@ class Home extends Component {
     }
 }
 
-export default withRouter(Home);
+export default Home;
