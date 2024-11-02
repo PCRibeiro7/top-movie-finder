@@ -4,8 +4,8 @@ import Document, { Html, Head, Main, NextScript } from 'next/document';
 class MyDocument extends Document {
     render() {
         return (
-            <Html lang="en" title='Vai ver o que?'>
-                <Head title='Vai ver o que?'>
+            <Html lang="en">
+                <Head>
                     {/* Include external stylesheets or meta tags */}
                     <link
                         rel="stylesheet"
@@ -15,6 +15,7 @@ class MyDocument extends Document {
                         name="viewport"
                         content="width=device-width, initial-scale=1.0"
                     />
+                    <title>Vai ver o que?</title>
                 </Head>
                 <body style={{ margin: 0 }}>
                     <Main />
