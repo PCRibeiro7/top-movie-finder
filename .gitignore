@@ -65,3 +65,6 @@ typings/
 
 # JetBrains IDE files
 /.idea
+
+# Local Netlify folder
+.netlify
