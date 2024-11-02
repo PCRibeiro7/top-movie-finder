@@ -75,8 +75,6 @@ const Home = () => {
 
     const movieInfoTableRef = useRef<HTMLDivElement>();
 
-    console.log(state);
-
     useEffect(() => {
         const init = async () => {
             getLocation();
@@ -86,7 +84,6 @@ const Home = () => {
             const cityId = await cityIdResponse.json();
             const moviesResponse = await fetch(`/api/movies?cityId=${cityId}`);
             const moviesData = await moviesResponse.json();
-            console.log(moviesData);
             setState((prevState) => ({
                 ...prevState,
                 availableMovies: moviesData,
@@ -138,6 +135,7 @@ const Home = () => {
             sessionTable: sessionTable,
         }));
     }
+
     function concatenateSessionTimes(roomsArray) {
         let concatenatedTimesArray = [];
         if (roomsArray) {
@@ -156,6 +154,7 @@ const Home = () => {
         );
         return concatenatedTimesArray;
     }
+
     function handleMovieCardSelector(e, movie) {
         onFetchMovieButtonClick({
             movie: movie.title.trim(),
@@ -166,19 +165,13 @@ const Home = () => {
             window.scrollTo(0, movieInfoTableRef.current.offsetTop);
         }
     }
+
     function handleMovieSelector(e) {
         onFetchMovieButtonClick({
             movie: JSON.parse(e.target.value).title.trim(),
             originalMovie: JSON.parse(e.target.value).originalTitle.trim(),
             trailer: JSON.parse(e.target.value).trailer,
         });
-    }
-    function handleSessionTableSort(targetId) {
-        setState((prevState) => ({
-            ...prevState,
-            sessionTableSortColumn: targetId,
-            sessionTableSortDirection: state.sessionTableSortDirection * -1,
-        }));
     }
 
     function getLocation() {

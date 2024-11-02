@@ -119,14 +119,16 @@ const Filter = ({ state, setState, handleFilterSwitchChange }: Props) => {
                                         <Tooltip
                                             open={state.genreHelpListOpen}
                                             onClose={() =>
-                                                setState({
+                                                setState((prevState) => ({
+                                                    ...prevState,
                                                     genreHelpListOpen: false,
-                                                })
+                                                }))
                                             }
                                             onClick={() =>
-                                                setState({
+                                                setState((prevState) => ({
+                                                    ...prevState,
                                                     genreHelpListOpen: true,
-                                                })
+                                                }))
                                             }
                                             placement="right"
                                             title={
