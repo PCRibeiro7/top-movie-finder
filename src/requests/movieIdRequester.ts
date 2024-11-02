@@ -1,6 +1,6 @@
-export default function movieIdRequest(movieTitle, cityId = '2') {
+export default function movieIdRequest(movieTitle, cityId = '1') {
     return fetch(
-        `https://cors-anywhere.herokuapp.com/https://api-content.ingresso.com/v0/events/city/${cityId}`
+        `https://api-content.ingresso.com/v0/events/city/${cityId}`
     )
         .then(function (response) {
             return response.json();

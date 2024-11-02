@@ -156,52 +156,58 @@ class Home extends Component<{}, HomeState> {
                     movieInfo: res,
                 },
                 () => {
-                    movieIdRequest(this.state.movie, this.state.cityId).then(
-                        (res) => {
+                    fetch(
+                        `/api/movie?movie=${this.state.movie}&cityId${this.state.cityId}`
+                    )
+                        .then((res) => res.json())
+                        .then((res) => {
                             this.setState(
                                 {
                                     movieId: res,
                                 },
                                 () => {
-                                    sessionRequest(
-                                        this.state.movieId,
-                                        this.state.cityId
-                                    ).then((res) => {
-                                        let sessionTable = [];
-                                        res[0].theaters.map((theater) => {
-                                            sessionTable.push({
-                                                name: theater.name,
-                                                times: this.concatenateSessionTimes(
-                                                    theater.rooms
-                                                ),
-                                                distance: distanceCalculator(
-                                                    this.state
-                                                        .currentGeographicPosition
-                                                        .latitude,
-                                                    this.state
-                                                        .currentGeographicPosition
-                                                        .longitude,
-                                                    theater.geolocation.lat,
-                                                    theater.geolocation.lng,
-                                                    'K'
-                                                ),
-                                                neighborhood:
-                                                    theater.neighborhood,
-                                                price: theater.rooms[0]
-                                                    .sessions[0].price,
+                                    fetch(
+                                        `/api/session?movieId=${this.state.movieId}&cityId${this.state.cityId}`
+                                    )
+                                        .then((res) => res.json())
+                                        .then((res) => {
+                                            let sessionTable = [];
+                                            res[0]?.theaters?.map((theater) => {
+                                                sessionTable.push({
+                                                    name: theater.name,
+                                                    times: this.concatenateSessionTimes(
+                                                        theater.rooms
+                                                    ),
+                                                    distance:
+                                                        distanceCalculator(
+                                                            this.state
+                                                                .currentGeographicPosition
+                                                                .latitude,
+                                                            this.state
+                                                                .currentGeographicPosition
+                                                                .longitude,
+                                                            theater.geolocation
+                                                                .lat,
+                                                            theater.geolocation
+                                                                .lng,
+                                                            'K'
+                                                        ),
+                                                    neighborhood:
+                                                        theater.neighborhood,
+                                                    price: theater.rooms[0]
+                                                        .sessions[0].price,
+                                                });
+                                                return null;
                                             });
-                                            return null;
+                                            this.setState({
+                                                sessionsInfo: res,
+                                                sessionInfoIsReady: true,
+                                                sessionTable: sessionTable,
+                                            });
                                         });
-                                        this.setState({
-                                            sessionsInfo: res,
-                                            sessionInfoIsReady: true,
-                                            sessionTable: sessionTable,
-                                        });
-                                    });
                                 }
                             );
-                        }
-                    );
+                        });
                 }
             );
         });
@@ -283,7 +289,7 @@ class Home extends Component<{}, HomeState> {
         }
         if (movie.genres.includes('Ação')) {
             iconComponentsArray.push(
-                <SportsKabaddiIcon key="Comédia" fontSize={'small'} />
+                <SportsKabaddiIcon key="Ação" fontSize={'small'} />
             );
         }
         if (movie.genres.includes('Musical')) {
@@ -303,21 +309,13 @@ class Home extends Component<{}, HomeState> {
         }
         return (
             <Grid>
-                <Typography>
-                    <Grid
-                        container
-                        alignItems="center"
-                        justifyContent="flex-start"
-                    >
-                        <img
-                            alt=""
-                            height="100px"
-                            src={movie?.images[0]?.url}
-                        />
+                <Grid container alignItems="center" justifyContent="flex-start">
+                    <img alt="" height="100px" src={movie?.images[0]?.url} />
+                    <Typography>
                         {movie.title}
                         {iconComponentsArray}
-                    </Grid>
-                </Typography>
+                    </Typography>
+                </Grid>
             </Grid>
         );
     }
@@ -833,20 +831,25 @@ class Home extends Component<{}, HomeState> {
                                             fullWidth={true}
                                         >
                                             <Select
-                                                value={JSON.stringify({
-                                                    title: this.state.movie,
-                                                    originalTitle:
-                                                        this.state
-                                                            .originalMovie,
-                                                    trailer: this.state.trailer,
-                                                })}
+                                                value={
+                                                    this.state.movie
+                                                        ? JSON.stringify({
+                                                              title: this.state
+                                                                  .movie,
+                                                              originalTitle:
+                                                                  this.state
+                                                                      .originalMovie,
+                                                              trailer:
+                                                                  this.state
+                                                                      .trailer,
+                                                          })
+                                                        : ''
+                                                }
                                                 onChange={(e) =>
                                                     this.handleMovieSelector(e)
                                                 }
                                             >
-                                                {this.state.availableMovies
-                                                    .length
-                                                    ? this.state.availableMovies.map(
+                                                { this.state.availableMovies.map(
                                                           (movie) => (
                                                               <MenuItem
                                                                   style={{
@@ -871,7 +874,7 @@ class Home extends Component<{}, HomeState> {
                                                               </MenuItem>
                                                           )
                                                       )
-                                                    : null}
+                                                    }
                                             </Select>
                                         </FormControl>
                                     </Paper>
@@ -1775,17 +1778,21 @@ class Home extends Component<{}, HomeState> {
                             >
                                 <Select
                                     style={{ margin: '5%' }}
-                                    value={JSON.stringify({
-                                        title: this.state.movie,
-                                        originalTitle: this.state.originalMovie,
-                                        trailer: this.state.trailer,
-                                    })}
+                                    value={
+                                        this.state.movie
+                                            ? JSON.stringify({
+                                                  title: this.state.movie,
+                                                  originalTitle:
+                                                      this.state.originalMovie,
+                                                  trailer: this.state.trailer,
+                                              })
+                                            : ''
+                                    }
                                     onChange={(e) =>
                                         this.handleMovieSelector(e)
                                     }
                                 >
-                                    {this.state.availableMovies.length
-                                        ? this.state.availableMovies.map(
+                                    {this.state.availableMovies.map(
                                               (movie) => (
                                                   <MenuItem
                                                       style={{ height: '5%' }}
@@ -1804,25 +1811,25 @@ class Home extends Component<{}, HomeState> {
                                                   </MenuItem>
                                               )
                                           )
-                                        : null}
+                                        }
                                 </Select>
                             </FormControl>
                         </Grid>
                     </Grid>
                     <Grid container justifyContent="center">
                         <Paper style={{ margin: '50px', padding: '30px' }}>
-                            <Typography variant="h4">
-                                <Grid
-                                    container
-                                    justifyContent="center"
-                                    alignItems="center"
-                                >
-                                    <ArrowUpwardIcon
-                                        style={{ margin: '1%', fontSize: 50 }}
-                                    ></ArrowUpwardIcon>
+                            <Grid
+                                container
+                                justifyContent="center"
+                                alignItems="center"
+                            >
+                                <ArrowUpwardIcon
+                                    style={{ margin: '1%', fontSize: 50 }}
+                                ></ArrowUpwardIcon>
+                                <Typography variant="h4">
                                     Escolha um dos Filmes Em Cartaz!
-                                </Grid>
-                            </Typography>
+                                </Typography>
+                            </Grid>
                         </Paper>
                     </Grid>
                 </div>

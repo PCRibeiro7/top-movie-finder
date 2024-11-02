@@ -1,4 +1,4 @@
-export default function cityNameRequest(cityId = '2') {
+export default function cityNameRequest(cityId = '1') {
     API_KEY = 'AIzaSyDprnBktio47EetA2Qy_oCXiZEvhsj5EoA';
     return fetch(
         `https://cors-anywhere.herokuapp.com/https://api-content.ingresso.com/v0/events/city/${cityId}`
