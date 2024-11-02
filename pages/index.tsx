@@ -2,47 +2,47 @@
 // "use client"
 import React, { Component } from 'react';
 
+import {
+    AppBar,
+    CircularProgress,
+    Fab,
+    FormControl,
+    Grid,
+    Hidden,
+    MenuItem,
+    Paper,
+    Select,
+    Slider,
+    Switch,
+    TextField,
+    Toolbar,
+    Tooltip,
+    Typography,
+} from '@material-ui/core';
+import Button from '@material-ui/core/Button';
+import IconButton from '@material-ui/core/IconButton';
 import Table from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
 import TableHead from '@material-ui/core/TableHead';
 import TableRow from '@material-ui/core/TableRow';
-import Button from '@material-ui/core/Button';
-import { Slider, Tooltip, Hidden, Switch, Divider } from '@material-ui/core';
-import IconButton from '@material-ui/core/IconButton';
-import {
-    TextField,
-    Grid,
-    Select,
-    MenuItem,
-    FormControl,
-    Typography,
-    AppBar,
-    Toolbar,
-    Paper,
-    Fab,
-    CircularProgress,
-} from '@material-ui/core';
-
-import WhatshotIcon from '@material-ui/icons/Whatshot';
-import InsertEmoticonIcon from '@material-ui/icons/InsertEmoticon';
-import SportsKabaddiIcon from '@material-ui/icons/SportsKabaddi';
-import SentimentVeryDissatisfiedIcon from '@material-ui/icons/SentimentVeryDissatisfied';
-import LocalFloristIcon from '@material-ui/icons/LocalFlorist';
-import ToysIcon from '@material-ui/icons/Toys';
-import MusicNoteIcon from '@material-ui/icons/MusicNote';
-import MenuBookIcon from '@material-ui/icons/MenuBook';
-import FilterHdrIcon from '@material-ui/icons/FilterHdr';
-import SearchIcon from '@material-ui/icons/Search';
 import ArrowUpwardIcon from '@material-ui/icons/ArrowUpward';
-import StarIcon from '@material-ui/icons/Star';
+import FilterHdrIcon from '@material-ui/icons/FilterHdr';
 import HelpIcon from '@material-ui/icons/Help';
-import omdbTryHardRequest from '../src/requests/omdbTryHardRequester';
-import omdbRequest from '../src/requests/omdbRequester';
-import movieIdRequest from '../src/requests/movieIdRequester';
-import sessionRequest from '../src/requests/sessionsRequester';
-import distanceCalculator from '../src/utils/distanceCalculator';
+import InsertEmoticonIcon from '@material-ui/icons/InsertEmoticon';
+import LocalFloristIcon from '@material-ui/icons/LocalFlorist';
+import MenuBookIcon from '@material-ui/icons/MenuBook';
+import MusicNoteIcon from '@material-ui/icons/MusicNote';
+import SearchIcon from '@material-ui/icons/Search';
+import SentimentVeryDissatisfiedIcon from '@material-ui/icons/SentimentVeryDissatisfied';
+import SportsKabaddiIcon from '@material-ui/icons/SportsKabaddi';
+import StarIcon from '@material-ui/icons/Star';
+import ToysIcon from '@material-ui/icons/Toys';
+import WhatshotIcon from '@material-ui/icons/Whatshot';
+
 import GenreHelpList from '../src/components/GenreHelpList';
+import omdbRequest from '../src/requests/omdbRequester';
+import distanceCalculator from '../src/utils/distanceCalculator';
 
 interface HomeState {
     movie: string;
@@ -112,7 +112,6 @@ class Home extends Component<{}, HomeState> {
         this.movieInfoTableRef = React.createRef();
     }
     async componentDidMount() {
-        omdbTryHardRequest('Alcatraz: Escapada Impossível 2.0 - Escape Route');
         this.getLocation();
         const cityIdResponse = await fetch(
             '/api/state?state=SP&cityName=São Paulo'
@@ -452,7 +451,7 @@ class Home extends Component<{}, HomeState> {
         if (this.state.movie) {
             return (
                 <div style={{ overflow: 'hidden' }}>
-                    <AppBar position="static">
+                    <AppBar position="static" style={{ background: 'black' }}>
                         <Toolbar>
                             <img
                                 alt="Sem Imagem"
@@ -465,7 +464,11 @@ class Home extends Component<{}, HomeState> {
                             <Typography variant="h6">Vai ver o que?</Typography>
                         </Toolbar>
                     </AppBar>
-                    <Grid container justifyContent="center">
+                    <Grid
+                        container
+                        justifyContent="center"
+                        style={{ background: 'lightgray' }}
+                    >
                         <Grid item xs={12}>
                             <Grid
                                 container
@@ -849,32 +852,29 @@ class Home extends Component<{}, HomeState> {
                                                     this.handleMovieSelector(e)
                                                 }
                                             >
-                                                { this.state.availableMovies.map(
-                                                          (movie) => (
-                                                              <MenuItem
-                                                                  style={{
-                                                                      height: '5%',
-                                                                  }}
-                                                                  key={
-                                                                      movie.title
-                                                                  }
-                                                                  value={JSON.stringify(
-                                                                      {
-                                                                          title: movie.title,
-                                                                          originalTitle:
-                                                                              movie.originalTitle,
-                                                                          trailer:
-                                                                              movie.trailers,
-                                                                      }
-                                                                  )}
-                                                              >
-                                                                  {this.returnStyledMenuItemContent(
-                                                                      movie
-                                                                  )}
-                                                              </MenuItem>
-                                                          )
-                                                      )
-                                                    }
+                                                {this.state.availableMovies.map(
+                                                    (movie) => (
+                                                        <MenuItem
+                                                            style={{
+                                                                height: '5%',
+                                                            }}
+                                                            key={movie.title}
+                                                            value={JSON.stringify(
+                                                                {
+                                                                    title: movie.title,
+                                                                    originalTitle:
+                                                                        movie.originalTitle,
+                                                                    trailer:
+                                                                        movie.trailers,
+                                                                }
+                                                            )}
+                                                        >
+                                                            {this.returnStyledMenuItemContent(
+                                                                movie
+                                                            )}
+                                                        </MenuItem>
+                                                    )
+                                                )}
                                             </Select>
                                         </FormControl>
                                     </Paper>
@@ -1173,7 +1173,7 @@ class Home extends Component<{}, HomeState> {
                                 0 ? (
                                     <div>
                                         <Hidden xsDown>
-                                            <Grid item xs={12}>
+                                            <Grid item>
                                                 <Paper
                                                     style={{
                                                         padding: '1%',
@@ -1337,7 +1337,7 @@ class Home extends Component<{}, HomeState> {
                                             </Grid>
                                         </Hidden>
                                         <Hidden smUp>
-                                            <Grid item xs={12}>
+                                            <Grid item>
                                                 <Paper
                                                     style={{
                                                         padding: '3%',
@@ -1744,8 +1744,8 @@ class Home extends Component<{}, HomeState> {
             );
         } else {
             return (
-                <div style={{ overflow: 'hidden' }}>
-                    <AppBar position="static">
+                <div style={{ overflow: 'hidden', height: '100dvh' }}>
+                    <AppBar position="static" style={{ background: 'black' }}>
                         <Toolbar>
                             <img
                                 alt="Sem Imagem"
@@ -1767,7 +1767,11 @@ class Home extends Component<{}, HomeState> {
                             {/* <Button color="secondary" fullWidth={true} onClick={this.onPrintStateButtonClick}>Print State</Button> */}
                         </Grid>
                     </Grid>
-                    <Grid container justifyContent={'center'}>
+                    <Grid
+                        container
+                        justifyContent={'center'}
+                        style={{ background: 'lightgray' }}
+                    >
                         <Grid item xs={4}>
                             <Typography style={{ margin: '5%' }}>
                                 Selecione o Filme:
@@ -1792,32 +1796,38 @@ class Home extends Component<{}, HomeState> {
                                         this.handleMovieSelector(e)
                                     }
                                 >
-                                    {this.state.availableMovies.map(
-                                              (movie) => (
-                                                  <MenuItem
-                                                      style={{ height: '5%' }}
-                                                      key={movie.title}
-                                                      value={JSON.stringify({
-                                                          title: movie.title,
-                                                          originalTitle:
-                                                              movie.originalTitle,
-                                                          trailer:
-                                                              movie.trailers,
-                                                      })}
-                                                  >
-                                                      {this.returnStyledMenuItemContent(
-                                                          movie
-                                                      )}
-                                                  </MenuItem>
-                                              )
-                                          )
-                                        }
+                                    {this.state.availableMovies.map((movie) => (
+                                        <MenuItem
+                                            style={{ height: '5%' }}
+                                            key={movie.title}
+                                            value={JSON.stringify({
+                                                title: movie.title,
+                                                originalTitle:
+                                                    movie.originalTitle,
+                                                trailer: movie.trailers,
+                                            })}
+                                        >
+                                            {this.returnStyledMenuItemContent(
+                                                movie
+                                            )}
+                                        </MenuItem>
+                                    ))}
                                 </Select>
                             </FormControl>
                         </Grid>
                     </Grid>
-                    <Grid container justifyContent="center">
-                        <Paper style={{ margin: '50px', padding: '30px' }}>
+                    <Grid
+                        container
+                        justifyContent="center"
+                        style={{ background: 'lightgray', height: '100%' }}
+                    >
+                        <Paper
+                            style={{
+                                margin: '50px',
+                                padding: '30px',
+                                height: 'fit-content',
+                            }}
+                        >
                             <Grid
                                 container
                                 justifyContent="center"
