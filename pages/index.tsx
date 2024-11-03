@@ -1,7 +1,8 @@
-// "use client"
+'use client';
+
 import React, { useEffect, useRef } from 'react';
 
-import { Grid, Paper, Typography } from '@material-ui/core';
+import { Grid, Typography } from '@material-ui/core';
 
 import Filter from '../src/components/Filter';
 import MovieAppBar from '../src/components/MovieAppBar';

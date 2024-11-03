@@ -1,3 +1,5 @@
+'use client';
+
 import {
     Grid,
     IconButton,
@@ -21,6 +23,7 @@ import WhatshotIcon from '@material-ui/icons/Whatshot';
 import React from 'react';
 import GenreHelpList from './GenreHelpList';
 import { HomeState } from '../../pages';
+import dynamic from 'next/dynamic';
 
 type Props = {
     state: HomeState;
@@ -337,4 +340,4 @@ const Filter = ({ state, setState, handleFilterSwitchChange }: Props) => {
     );
 };
 
-export default Filter;
+export default dynamic(() => Promise.resolve(Filter), { ssr: false });

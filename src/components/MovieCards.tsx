@@ -212,7 +212,6 @@ const MovieCards = ({
                         style={{
                             textAlign: 'center',
                         }}
-                        justify="center"
                         xs={12}
                     >
                         <CircularProgress></CircularProgress>
