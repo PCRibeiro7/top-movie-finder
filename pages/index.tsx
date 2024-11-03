@@ -164,14 +164,6 @@ const Home = () => {
         }
     }
 
-    function handleMovieSelector(e) {
-        onFetchMovieButtonClick({
-            movie: JSON.parse(e.target.value).title.trim(),
-            originalMovie: JSON.parse(e.target.value).originalTitle.trim(),
-            trailer: JSON.parse(e.target.value).trailer,
-        });
-    }
-
     function getLocation() {
         let location = window.navigator && window.navigator.geolocation;
         if (location) {
