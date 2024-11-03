@@ -1,15 +1,12 @@
-/* jshint loopfunc: false */
 // "use client"
 import React, { useEffect, useRef } from 'react';
 
 import { Grid, Paper, Typography } from '@material-ui/core';
-import ArrowUpwardIcon from '@material-ui/icons/ArrowUpward';
 
 import Filter from '../src/components/Filter';
 import MovieAppBar from '../src/components/MovieAppBar';
 import MovieCards from '../src/components/MovieCards';
 import MovieInfo from '../src/components/MovieInfo';
-import MovieSelector from '../src/components/MovieSelector';
 import SessionInfo from '../src/components/SessionInfo';
 import omdbRequest from '../src/requests/omdbRequester';
 import distanceCalculator from '../src/utils/distanceCalculator';
@@ -246,100 +243,47 @@ const Home = () => {
     return (
         <div style={{ height: '100dvh' }}>
             <MovieAppBar />
-            {state.movie ? (
-                <Grid
-                    container
-                    justifyContent="center"
-                    style={{ background: 'lightgray' }}
-                >
-                    <Grid item xs={12}>
-                        <Grid container justifyContent={'center'}>
-                            <Filter
-                                state={state}
-                                setState={setState}
-                                handleFilterSwitchChange={
-                                    handleFilterSwitchChange
-                                }
-                            />
+            <Grid
+                container
+                justifyContent="center"
+                style={{ background: 'lightgray' }}
+            >
+                <Grid item xs={12}>
+                    <Grid container justifyContent={'center'}>
+                        <Filter
+                            state={state}
+                            setState={setState}
+                            handleFilterSwitchChange={handleFilterSwitchChange}
+                        />
+                        <MovieCards
+                            state={state}
+                            setState={setState}
+                            handleMovieCardSelector={handleMovieCardSelector}
+                        />
 
-                            <MovieSelector
-                                state={state}
-                                handleMovieSelector={handleMovieSelector}
-                            />
-                            <MovieCards
-                                state={state}
-                                setState={setState}
-                                handleMovieCardSelector={
-                                    handleMovieCardSelector
-                                }
-                            />
-
-                            <div ref={movieInfoTableRef}></div>
-                            {Object.entries(state.movieInfo).length !== 0 ? (
-                                <MovieInfo state={state} />
-                            ) : (
-                                <Grid container justifyContent="center">
-                                    {' '}
-                                    <Grid item xs={11}>
-                                        <Typography
-                                            align="center"
-                                            style={{ padding: '1%' }}
-                                            variant="h4"
-                                        >
-                                            {state.movie}
-                                        </Typography>{' '}
-                                    </Grid>
+                        <div ref={movieInfoTableRef}></div>
+                        {Object.entries(state.movieInfo).length !== 0 ? (
+                            <MovieInfo state={state} />
+                        ) : (
+                            <Grid container justifyContent="center">
+                                {' '}
+                                <Grid item xs={11}>
+                                    <Typography
+                                        align="center"
+                                        style={{ padding: '1%' }}
+                                        variant="h4"
+                                    >
+                                        {state.movie}
+                                    </Typography>{' '}
                                 </Grid>
-                            )}
-                            {state.sessionInfoIsReady ? (
-                                <SessionInfo
-                                    state={state}
-                                    setState={setState}
-                                />
-                            ) : null}
-                        </Grid>
+                            </Grid>
+                        )}
+                        {state.sessionInfoIsReady ? (
+                            <SessionInfo state={state} setState={setState} />
+                        ) : null}
                     </Grid>
                 </Grid>
-            ) : (
-                <>
-                    <Grid
-                        container
-                        justifyContent={'center'}
-                        style={{ background: 'lightgray' }}
-                    >
-                        <MovieSelector
-                            state={state}
-                            handleMovieSelector={handleMovieSelector}
-                        />
-                    </Grid>
-                    <Grid
-                        container
-                        justifyContent="center"
-                        style={{ background: 'lightgray', height: '100%' }}
-                    >
-                        <Paper
-                            style={{
-                                margin: '50px',
-                                padding: '30px',
-                                height: 'fit-content',
-                            }}
-                        >
-                            <Grid
-                                container
-                                justifyContent="center"
-                                alignItems="center"
-                            >
-                                <ArrowUpwardIcon
-                                    style={{ margin: '1%', fontSize: 50 }}
-                                ></ArrowUpwardIcon>
-                                <Typography variant="h4">
-                                    Escolha um dos Filmes Em Cartaz!
-                                </Typography>
-                            </Grid>
-                        </Paper>
-                    </Grid>
-                </>
-            )}
+            </Grid>
         </div>
     );
 };
