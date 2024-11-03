@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 
-import { Grid, Typography } from '@material-ui/core';
+import { Grid, Typography } from '@mui/material';
 
 import Filter from '../src/components/Filter';
 import MovieAppBar from '../src/components/MovieAppBar';

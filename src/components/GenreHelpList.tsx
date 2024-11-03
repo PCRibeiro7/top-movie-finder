@@ -1,18 +1,18 @@
 import React from 'react';
 
-import WhatshotIcon from '@material-ui/icons/Whatshot';
-import InsertEmoticonIcon from '@material-ui/icons/InsertEmoticon';
-import SportsKabaddiIcon from '@material-ui/icons/SportsKabaddi';
-import SentimentVeryDissatisfiedIcon from '@material-ui/icons/SentimentVeryDissatisfied';
-import LocalFloristIcon from '@material-ui/icons/LocalFlorist';
-import ToysIcon from '@material-ui/icons/Toys';
-import MusicNoteIcon from '@material-ui/icons/MusicNote';
-import MenuBookIcon from '@material-ui/icons/MenuBook';
-import FilterHdrIcon from '@material-ui/icons/FilterHdr';
-import SearchIcon from '@material-ui/icons/Search';
+import WhatshotIcon from '@mui/icons-material/Whatshot';
+import InsertEmoticonIcon from '@mui/icons-material/InsertEmoticon';
+import SportsKabaddiIcon from '@mui/icons-material/SportsKabaddi';
+import SentimentVeryDissatisfiedIcon from '@mui/icons-material/SentimentVeryDissatisfied';
+import LocalFloristIcon from '@mui/icons-material/LocalFlorist';
+import ToysIcon from '@mui/icons-material/Toys';
+import MusicNoteIcon from '@mui/icons-material/MusicNote';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
+import FilterHdrIcon from '@mui/icons-material/FilterHdr';
+import SearchIcon from '@mui/icons-material/Search';
 
-import Grid from '@material-ui/core/Grid';
-import Typography from '@material-ui/core/Typography';
+import Grid from '@mui/material/Grid';
+import Typography from '@mui/material/Typography';
 
 export default function GenreHelpList(state) {
     return (

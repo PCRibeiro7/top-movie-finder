@@ -7,8 +7,8 @@ import {
     Paper,
     Slider,
     Typography,
-} from '@material-ui/core';
-import StarIcon from '@material-ui/icons/Star';
+} from '@mui/material';
+import StarIcon from '@mui/icons-material/Star';
 import { HomeState } from '../../pages';
 
 type MovieCardsProps = {

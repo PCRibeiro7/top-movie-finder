@@ -8,18 +8,18 @@ import {
     TextField,
     Tooltip,
     Typography,
-} from '@material-ui/core';
-import FilterHdrIcon from '@material-ui/icons/FilterHdr';
-import HelpIcon from '@material-ui/icons/Help';
-import InsertEmoticonIcon from '@material-ui/icons/InsertEmoticon';
-import LocalFloristIcon from '@material-ui/icons/LocalFlorist';
-import MenuBookIcon from '@material-ui/icons/MenuBook';
-import MusicNoteIcon from '@material-ui/icons/MusicNote';
-import SearchIcon from '@material-ui/icons/Search';
-import SentimentVeryDissatisfiedIcon from '@material-ui/icons/SentimentVeryDissatisfied';
-import SportsKabaddiIcon from '@material-ui/icons/SportsKabaddi';
-import ToysIcon from '@material-ui/icons/Toys';
-import WhatshotIcon from '@material-ui/icons/Whatshot';
+} from '@mui/material';
+import FilterHdrIcon from '@mui/icons-material/FilterHdr';
+import HelpIcon from '@mui/icons-material/Help';
+import InsertEmoticonIcon from '@mui/icons-material/InsertEmoticon';
+import LocalFloristIcon from '@mui/icons-material/LocalFlorist';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
+import MusicNoteIcon from '@mui/icons-material/MusicNote';
+import SearchIcon from '@mui/icons-material/Search';
+import SentimentVeryDissatisfiedIcon from '@mui/icons-material/SentimentVeryDissatisfied';
+import SportsKabaddiIcon from '@mui/icons-material/SportsKabaddi';
+import ToysIcon from '@mui/icons-material/Toys';
+import WhatshotIcon from '@mui/icons-material/Whatshot';
 import React from 'react';
 import GenreHelpList from './GenreHelpList';
 import { HomeState } from '../../pages';

@@ -9,7 +9,7 @@ import {
     TableCell,
     TableBody,
     Hidden,
-} from '@material-ui/core';
+} from '@mui/material';
 import { HomeState } from '../../pages';
 
 type MovieInfoProps = {

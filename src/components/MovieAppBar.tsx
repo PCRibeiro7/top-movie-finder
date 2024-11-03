@@ -1,5 +1,5 @@
 import React from 'react';
-import { AppBar, Toolbar, Typography } from '@material-ui/core';
+import { AppBar, Toolbar, Typography } from '@mui/material';
 
 const MovieAppBar = () => (
     <AppBar position="static" style={{ background: 'black' }}>
