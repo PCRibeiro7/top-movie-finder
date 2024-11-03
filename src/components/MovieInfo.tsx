@@ -11,6 +11,7 @@ import {
     Hidden,
 } from '@mui/material';
 import { HomeState } from '../../pages';
+import img from 'next/image';
 
 type MovieInfoProps = {
     state: HomeState;
@@ -74,7 +75,7 @@ const MovieInfo = ({ state }: MovieInfoProps) => (
                                                                       ''
                                                                   )
                                                           )
-                                                        : null
+                                                        : undefined
                                                 }
                                             >
                                                 <img
@@ -133,7 +134,7 @@ const MovieInfo = ({ state }: MovieInfoProps) => (
                                                   .replace('www.', '')
                                                   .replace('https://', '')
                                           )
-                                        : null
+                                        : undefined
                                 }
                             >
                                 <img

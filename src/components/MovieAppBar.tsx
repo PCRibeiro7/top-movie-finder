@@ -1,5 +1,6 @@
 import React from 'react';
 import { AppBar, Toolbar, Typography } from '@mui/material';
+import img from 'next/image';
 
 const MovieAppBar = () => (
     <AppBar position="static" style={{ background: 'black' }}>

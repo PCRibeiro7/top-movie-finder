@@ -10,6 +10,8 @@ import {
 } from '@mui/material';
 import StarIcon from '@mui/icons-material/Star';
 import { HomeState } from '../../pages';
+import img from 'next/image';
+import { MouseEvent } from 'react';
 
 type MovieCardsProps = {
     state: HomeState;
@@ -39,7 +41,7 @@ const MovieCards = ({
                         <Hidden xsDown>
                             <Fab
                                 size="small"
-                                onClick={(e) =>
+                                onClick={() =>
                                     setState((prevState) => ({
                                         ...prevState,
                                         cardFirst:
@@ -95,7 +97,12 @@ const MovieCards = ({
                                                   >
                                                       <Button
                                                           border={1}
-                                                          onClick={(e) =>
+                                                          onClick={(
+                                                              e: MouseEvent<
+                                                                  HTMLButtonElement,
+                                                                  MouseEvent
+                                                              >
+                                                          ) =>
                                                               handleMovieCardSelector(
                                                                   e,
                                                                   movie
@@ -154,7 +161,7 @@ const MovieCards = ({
                         <Hidden xsDown>
                             <Fab
                                 size="small"
-                                onClick={(e) =>
+                                onClick={() =>
                                     setState((prevState) => ({
                                         ...prevState,
                                         cardFirst:
@@ -178,7 +185,7 @@ const MovieCards = ({
                                 aria-labelledby="discrete-slider"
                                 valueLabelDisplay="auto"
                                 step={1}
-                                onChange={(e, value) =>
+                                onChange={({}, value: number) =>
                                     setState((prevState) => ({
                                         ...prevState,
                                         cardFirst: value,

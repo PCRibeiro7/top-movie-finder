@@ -9,7 +9,7 @@ class MyDocument extends Document {
                     {/* Include external stylesheets or meta tags */}
                     <link
                         rel="stylesheet"
-                        href="https://fonts.googleapis.com/css?family=Roboto"
+                        href="https://fonts.googleapis.com/css?family=Roboto&display=optional"
                     />
                 </Head>
                 <body style={{ margin: 0 }}>

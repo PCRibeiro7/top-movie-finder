@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 
 import { Grid, Typography } from '@mui/material';
 
@@ -73,6 +73,23 @@ const Home = () => {
 
     const movieInfoTableRef = useRef<HTMLDivElement>();
 
+    const getLocation = useCallback(() => {
+        let location = window.navigator && window.navigator.geolocation;
+        if (location) {
+            location.getCurrentPosition(
+                (position) => {
+                    assignLocation(position);
+                },
+                () => {
+                    return {
+                        latitude: 'err-latitude',
+                        longitude: 'err-longitude',
+                    };
+                }
+            );
+        }
+    }, []);
+
     useEffect(() => {
         const init = async () => {
             getLocation();
@@ -92,7 +109,7 @@ const Home = () => {
         };
 
         init();
-    }, []);
+    }, [getLocation]);
 
     async function onFetchMovieButtonClick({ movie, originalMovie, trailer }) {
         const omdbRes = await omdbRequest(originalMovie);
@@ -164,23 +181,6 @@ const Home = () => {
         }
     }
 
-    function getLocation() {
-        let location = window.navigator && window.navigator.geolocation;
-        if (location) {
-            location.getCurrentPosition(
-                (position) => {
-                    assignLocation(position);
-                },
-                (error) => {
-                    return {
-                        latitude: 'err-latitude',
-                        longitude: 'err-longitude',
-                    };
-                }
-            );
-        }
-    }
-
     function assignLocation(position) {
         setState((prevState) => ({
             ...prevState,
@@ -238,10 +238,7 @@ const Home = () => {
             >
                 <Grid item xs={12}>
                     <Grid container justifyContent={'center'}>
-                        <Filter
-                            state={state}
-                            setState={setState}
-                        />
+                        <Filter state={state} setState={setState} />
                         <MovieCards
                             state={state}
                             setState={setState}

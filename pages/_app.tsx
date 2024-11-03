@@ -1,9 +1,10 @@
 import { createTheme, ThemeProvider } from '@mui/material/styles';
+import { AppProps } from 'next/app';
 import Head from 'next/head';
 
 const theme = createTheme();
 
-function MyApp({ Component, pageProps }) {
+function MyApp({ Component, pageProps }: AppProps) {
     return (
         <>
             <ThemeProvider theme={theme}>
