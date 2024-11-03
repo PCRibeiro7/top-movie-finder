@@ -22,8 +22,8 @@ export interface HomeState {
     sessionsInfo: Array<any>;
     sessionInfoIsReady: boolean;
     currentGeographicPosition: {
-        latitude: string;
-        longitude: string;
+        latitude: number | undefined;
+        longitude: number | undefined;
     };
     sessionTableSortColumn: string;
     sessionTableSortDirection: number;
@@ -52,8 +52,8 @@ const Home = () => {
         sessionsInfo: [],
         sessionInfoIsReady: false,
         currentGeographicPosition: {
-            latitude: '',
-            longitude: '',
+            latitude: undefined,
+            longitude: undefined,
         },
         sessionTableSortColumn: 'distance',
         sessionTableSortDirection: 1,
@@ -71,7 +71,7 @@ const Home = () => {
         trailer: [],
     });
 
-    const movieInfoTableRef = useRef<HTMLDivElement>();
+    const movieInfoTableRef = useRef<HTMLDivElement>(null);
 
     const getLocation = useCallback(() => {
         let location = window.navigator && window.navigator.geolocation;
@@ -111,7 +111,7 @@ const Home = () => {
         init();
     }, [getLocation]);
 
-    async function onFetchMovieButtonClick({ movie, originalMovie, trailer }) {
+    async function onFetchMovieButtonClick({ movie, originalMovie, trailer }: { movie: string; originalMovie: string; trailer: Array<any> }) {
         const omdbRes = await omdbRequest(originalMovie);
         const res = await fetch(
             `/api/movie?movie=${movie}&cityId${state.cityId}`
@@ -121,23 +121,36 @@ const Home = () => {
             `/api/session?movieId=${movieRes}&cityId${state.cityId}`
         );
         const sessionsData = await sessiosRes.json();
-        let sessionTable = [];
-        sessionsData[0]?.theaters?.map((theater) => {
-            sessionTable.push({
-                name: theater.name,
-                times: concatenateSessionTimes(theater.rooms),
-                distance: distanceCalculator(
-                    state.currentGeographicPosition.latitude,
-                    state.currentGeographicPosition.longitude,
-                    theater.geolocation.lat,
-                    theater.geolocation.lng,
-                    'K'
-                ),
-                neighborhood: theater.neighborhood,
-                price: theater.rooms[0].sessions[0].price,
-            });
-            return null;
-        });
+        let sessionTable: {
+            name: any;
+            times: any[];
+            distance: number;
+            neighborhood: any;
+            price: any;
+        }[] = [];
+        sessionsData[0]?.theaters?.map(
+            (theater: {
+                name: any;
+                rooms: { sessions: { price: any }[] }[];
+                geolocation: { lat: any; lng: any };
+                neighborhood: any;
+            }) => {
+                sessionTable.push({
+                    name: theater.name,
+                    times: concatenateSessionTimes(theater.rooms),
+                    distance: distanceCalculator(
+                        state.currentGeographicPosition.latitude,
+                        state.currentGeographicPosition.longitude,
+                        theater.geolocation.lat,
+                        theater.geolocation.lng,
+                        'K'
+                    ),
+                    neighborhood: theater.neighborhood,
+                    price: theater.rooms[0].sessions[0].price,
+                });
+                return null;
+            }
+        );
         setState((prevState) => ({
             ...prevState,
             movie: movie,
@@ -151,11 +164,11 @@ const Home = () => {
         }));
     }
 
-    function concatenateSessionTimes(roomsArray) {
-        let concatenatedTimesArray = [];
+    function concatenateSessionTimes(roomsArray: any[]) {
+        let concatenatedTimesArray: any[] = [];
         if (roomsArray) {
             roomsArray.map((room) => {
-                room.sessions.map((session) => {
+                room.sessions.map((session: { date: { hour: any } }) => {
                     if (!concatenatedTimesArray.includes(session.date.hour)) {
                         concatenatedTimesArray.push(`${session.date.hour} `);
                     }
@@ -170,7 +183,7 @@ const Home = () => {
         return concatenatedTimesArray;
     }
 
-    function handleMovieCardSelector(e, movie) {
+    function handleMovieCardSelector(e: any, movie: { title: string; originalTitle: string; trailers: any; }) {
         onFetchMovieButtonClick({
             movie: movie.title.trim(),
             originalMovie: movie.originalTitle.trim(),
@@ -181,7 +194,7 @@ const Home = () => {
         }
     }
 
-    function assignLocation(position) {
+    function assignLocation(position: GeolocationPosition) {
         setState((prevState) => ({
             ...prevState,
             currentGeographicPosition: {
@@ -190,12 +203,12 @@ const Home = () => {
             },
         }));
     }
-    function getImdbRantingbyTitle(availableMovies) {
+    function getImdbRantingbyTitle(availableMovies: any[]) {
         if (availableMovies) {
             let newAvailableMovies = [...availableMovies];
-            availableMovies.map((movie1) => {
+            availableMovies.map((movie1: { originalTitle: any; }) => {
                 omdbRequest(movie1.originalTitle).then((res) => {
-                    availableMovies.map((movie, index) => {
+                    availableMovies.map((movie: { originalTitle: any; }, index: number) => {
                         if (movie.originalTitle === movie1.originalTitle) {
                             newAvailableMovies[index].imdbRating =
                                 res.imdbRating ? res.imdbRating : '...';
@@ -229,12 +242,11 @@ const Home = () => {
     }
 
     return (
-        <div style={{ height: '100dvh' }}>
+        <div style={{ minHeight: '100dvh', background: 'lightgray' }}>
             <MovieAppBar />
             <Grid
                 container
                 justifyContent="center"
-                style={{ background: 'lightgray' }}
             >
                 <Grid item xs={12}>
                     <Grid container justifyContent={'center'}>

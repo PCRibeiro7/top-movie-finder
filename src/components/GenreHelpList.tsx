@@ -13,8 +13,9 @@ import SearchIcon from '@mui/icons-material/Search';
 
 import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
+import { HomeState } from '../../pages';
 
-export default function GenreHelpList(state) {
+export default function GenreHelpList(state: HomeState) {
     return (
         <div style={{ margin: '2%' }}>
             <Grid container alignItems="center">

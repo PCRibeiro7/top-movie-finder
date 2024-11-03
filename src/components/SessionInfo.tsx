@@ -16,7 +16,7 @@ type SessionInfoProps = {
 };
 
 const SessionInfo = ({ state, setState }: SessionInfoProps) => {
-    function handleSessionTableSort(targetId) {
+    function handleSessionTableSort(targetId: string) {
         setState((prevState) => ({
             ...prevState,
             sessionTableSortColumn: targetId,
@@ -39,7 +39,9 @@ const SessionInfo = ({ state, setState }: SessionInfoProps) => {
                 <Table>
                     <TableHead>
                         <TableRow
-                            onClick={(e) => handleSessionTableSort(e.target.id)}
+                            onClick={(e: { target: { id: string } }) =>
+                                handleSessionTableSort(e.target.id)
+                            }
                         >
                             <TableCell id={'name'} align="right">
                                 Cinema
