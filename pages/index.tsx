@@ -227,12 +227,7 @@ const Home = () => {
             }));
         }
     }
-    function handleFilterSwitchChange() {
-        setState((prevState) => ({
-            ...prevState,
-            showFilter: !state.showFilter,
-        }));
-    }
+
     return (
         <div style={{ height: '100dvh' }}>
             <MovieAppBar />
@@ -246,7 +241,6 @@ const Home = () => {
                         <Filter
                             state={state}
                             setState={setState}
-                            handleFilterSwitchChange={handleFilterSwitchChange}
                         />
                         <MovieCards
                             state={state}
