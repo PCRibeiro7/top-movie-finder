@@ -9,8 +9,6 @@ import MovieAppBar from '../src/components/MovieAppBar';
 import MovieCards from '../src/components/MovieCards';
 import MovieInfo from '../src/components/MovieInfo';
 import SessionInfo from '../src/components/SessionInfo';
-import omdbRequest from '../src/requests/omdbRequester';
-import distanceCalculator from '../src/utils/distanceCalculator';
 
 export interface HomeState {
     movie: string;
@@ -58,7 +56,7 @@ const Home = () => {
         sessionTableSortColumn: 'distance',
         sessionTableSortDirection: 1,
         sessionTable: [],
-        cardsToShow: 5,
+        cardsToShow: 10,
         cardFirst: 0,
         cardTotal: 0,
         showFilter: false,
@@ -117,103 +115,15 @@ const Home = () => {
         init();
     }, [getLocation]);
 
-    async function onFetchMovieButtonClick({
-        movie,
-        originalMovie,
-        trailer,
-    }: {
-        movie: string;
-        originalMovie: string;
-        trailer: Array<any>;
-    }) {
-        const omdbRes = await fetch(`/api/rating?movieName=${originalMovie}`);
-        const omdbData = await omdbRes.json();
-
-        const res = await fetch(
-            `/api/movie?movie=${movie}&cityId${state.cityId}`
-        );
-        const movieRes = await res.json();
-        const sessiosRes = await fetch(
-            `/api/session?movieId=${movieRes}&cityId${state.cityId}`
-        );
-        const sessionsData = await sessiosRes.json();
-        let sessionTable: {
-            name: any;
-            times: any[];
-            distance?: number;
-            neighborhood: any;
-            price: any;
-        }[] = [];
-        sessionsData[0]?.theaters?.map(
-            (theater: {
-                name: any;
-                rooms: { sessions: { price: any }[] }[];
-                geolocation: { lat: any; lng: any };
-                neighborhood: any;
-            }) => {
-                sessionTable.push({
-                    name: theater.name,
-                    times: concatenateSessionTimes(theater.rooms),
-                    distance: theater.geolocation.lat
-                        ? distanceCalculator(
-                              state.currentGeographicPosition.latitude,
-                              state.currentGeographicPosition.longitude,
-                              theater.geolocation.lat,
-                              theater.geolocation.lng,
-                              'K'
-                          )
-                        : undefined,
-                    neighborhood: theater.neighborhood,
-                    price: theater.rooms[0].sessions[0].price,
-                });
-                return null;
-            }
-        );
-        setState((prevState) => ({
-            ...prevState,
-            movie: movie,
-            originalMovie: originalMovie,
-            trailer: trailer,
-            movieId: movieRes,
-            movieInfo: omdbData,
-            sessionsInfo: sessionsData,
-            sessionInfoIsReady: true,
-            sessionTable: sessionTable,
-        }));
-    }
-
-    function concatenateSessionTimes(roomsArray: any[]) {
-        let concatenatedTimesArray: any[] = [];
-        if (roomsArray) {
-            roomsArray.map((room) => {
-                room.sessions.map((session: { date: { hour: any } }) => {
-                    if (!concatenatedTimesArray.includes(session.date.hour)) {
-                        concatenatedTimesArray.push(`${session.date.hour} `);
-                    }
-                    return null;
-                });
-                return null;
+    useEffect(() => {
+        if (movieInfoTableRef.current) {
+            window.scrollTo({
+                left: 0,
+                top: movieInfoTableRef.current.offsetTop,
+                behavior: 'smooth',
             });
         }
-        concatenatedTimesArray = concatenatedTimesArray.sort(
-            (a, b) => Number(a.slice(0, 3)) - Number(b.slice(0, 3))
-        );
-        return concatenatedTimesArray;
-    }
-
-    function handleMovieCardSelector(
-        e: any,
-        movie: { title: string; originalTitle: string; trailers: any }
-    ) {
-        onFetchMovieButtonClick({
-            movie: movie.title.trim(),
-            originalMovie: movie.originalTitle.trim(),
-            trailer: movie.trailers,
-        });
-        if (movieInfoTableRef.current) {
-            window.scrollTo(0, movieInfoTableRef.current.offsetTop);
-        }
-    }
+    }, [state.movieId]);
 
     function assignLocation(position: GeolocationPosition) {
         setState((prevState) => ({
@@ -232,7 +142,9 @@ const Home = () => {
             let newAvailableMovies = [...availableMovies];
 
             for (const movie of newAvailableMovies) {
-                const res = await fetch(`/api/rating?movieName=${movie.originalTitle}`);
+                const res = await fetch(
+                    `/api/rating?movieName=${movie.originalTitle}`
+                );
                 const resJson = await res.json();
 
                 movie.imdbRating = resJson.imdbRating ?? '...';
@@ -268,11 +180,7 @@ const Home = () => {
                 <Grid item xs={12}>
                     <Grid container justifyContent={'center'}>
                         <Filter state={state} setState={setState} />
-                        <MovieCards
-                            state={state}
-                            setState={setState}
-                            handleMovieCardSelector={handleMovieCardSelector}
-                        />
+                        <MovieCards state={state} setState={setState} />
 
                         <div ref={movieInfoTableRef}></div>
                         {Object.entries(state.movieInfo).length !== 0 ? (
