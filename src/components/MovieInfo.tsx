@@ -1,17 +1,15 @@
-import React from 'react';
 import {
     Grid,
-    Typography,
+    Hidden,
     Paper,
     Table,
+    TableBody,
+    TableCell,
     TableHead,
     TableRow,
-    TableCell,
-    TableBody,
-    Hidden,
+    Typography,
 } from '@mui/material';
 import { HomeState } from '../../pages';
-import img from 'next/image';
 
 type MovieInfoProps = {
     state: HomeState;

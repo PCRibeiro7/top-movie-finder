@@ -1,3 +1,4 @@
+import StarIcon from '@mui/icons-material/Star';
 import {
     Button,
     CircularProgress,
@@ -8,17 +9,15 @@ import {
     Slider,
     Typography,
 } from '@mui/material';
-import StarIcon from '@mui/icons-material/Star';
-import { HomeState } from '../../pages';
-import img from 'next/image';
 import { MouseEvent } from 'react';
+import { HomeState } from '../../pages';
 
 type MovieCardsProps = {
     state: HomeState;
     setState: React.Dispatch<React.SetStateAction<HomeState>>;
     handleMovieCardSelector: (
         e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
-        movie: any
+        movie: { title: string; originalTitle: string; trailers: any }
     ) => void;
 };
 const MovieCards = ({

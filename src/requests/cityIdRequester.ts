@@ -6,7 +6,7 @@ export default async function cityIdRequest(
     const response = await fetch(url);
     const data = await response.json();
 
-    let cityArray = data.cities.filter((city) => {
+    let cityArray = data.cities.filter((city: { name: string; }) => {
         if (city.name === cityName) {
             return true;
         }

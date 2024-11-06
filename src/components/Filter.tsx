@@ -27,11 +27,11 @@ import dynamic from 'next/dynamic';
 
 type Props = {
     state: HomeState;
-    setState: any;
+    setState: React.Dispatch<React.SetStateAction<HomeState>>;
 };
 
 const Filter = ({ state, setState }: Props) => {
-    function handleFilterGenreButtonClick(genre) {
+    function handleFilterGenreButtonClick(genre: string) {
         let newFilter = { ...state.filter };
         if (state.filter.genre === genre) {
             newFilter.genre = '';
@@ -44,7 +44,7 @@ const Filter = ({ state, setState }: Props) => {
         });
     }
 
-    function handleFilterTitleTextFieldChange(movieTitle) {
+    function handleFilterTitleTextFieldChange(movieTitle: string) {
         let newFilter = { ...state.filter };
         newFilter.title = movieTitle;
         updateTotalCardNumber({
@@ -57,8 +57,8 @@ const Filter = ({ state, setState }: Props) => {
         newFilter,
         cardFirst,
     }: {
-        newFilter?: HomeState['filter'];
-        cardFirst?: HomeState['cardFirst'];
+        newFilter: HomeState['filter'];
+        cardFirst: HomeState['cardFirst'];
     }) {
         let cardTotalNumber = state.availableMovies
             .filter((movie) => {
@@ -75,7 +75,7 @@ const Filter = ({ state, setState }: Props) => {
                 }
                 return true;
             }).length;
-        setState((prevState) => ({
+        setState((prevState: HomeState) => ({
             ...prevState,
             cardTotal: cardTotalNumber,
             filter: newFilter,
@@ -84,7 +84,7 @@ const Filter = ({ state, setState }: Props) => {
     }
 
     function handleFilterSwitchChange() {
-        setState((prevState) => ({
+        setState((prevState: HomeState) => ({
             ...prevState,
             showFilter: !state.showFilter,
         }));
@@ -127,13 +127,13 @@ const Filter = ({ state, setState }: Props) => {
                                         <Tooltip
                                             open={state.genreHelpListOpen}
                                             onClose={() =>
-                                                setState((prevState) => ({
+                                                setState((prevState: HomeState) => ({
                                                     ...prevState,
                                                     genreHelpListOpen: false,
                                                 }))
                                             }
                                             onClick={() =>
-                                                setState((prevState) => ({
+                                                setState((prevState: HomeState) => ({
                                                     ...prevState,
                                                     genreHelpListOpen: true,
                                                 }))
