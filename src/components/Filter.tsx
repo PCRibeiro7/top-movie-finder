@@ -38,48 +38,36 @@ const Filter = ({ state, setState }: Props) => {
         } else {
             newFilter.genre = genre;
         }
-        updateTotalCardNumber({
-            newFilter: newFilter,
-            cardFirst: 0,
-        });
+        updateFilters(newFilter);
     }
 
     function handleFilterTitleTextFieldChange(movieTitle: string) {
         let newFilter = { ...state.filter };
         newFilter.title = movieTitle;
-        updateTotalCardNumber({
-            newFilter: newFilter,
-            cardFirst: 0,
-        });
+        updateFilters(newFilter);
     }
 
-    function updateTotalCardNumber({
-        newFilter,
-        cardFirst,
-    }: {
-        newFilter: HomeState['filter'];
-        cardFirst: HomeState['cardFirst'];
-    }) {
+    function updateFilters(newFilter: HomeState['filter']) {
         let cardTotalNumber = state.availableMovies
             .filter((movie) => {
-                if (state.filter.genre !== '') {
-                    return movie.genres.includes(state.filter.genre);
+                if (newFilter.genre !== '') {
+                    return movie.genres.includes(newFilter.genre);
                 }
                 return true;
             })
             .filter((movie) => {
-                if (state.filter.title !== '') {
+                if (newFilter.title !== '') {
                     return movie.title
                         .toLowerCase()
-                        .includes(state.filter.title.toLowerCase());
+                        .includes(newFilter.title.toLowerCase());
                 }
                 return true;
             }).length;
         setState((prevState: HomeState) => ({
             ...prevState,
             cardTotal: cardTotalNumber,
+            cardFirst: 0,
             filter: newFilter,
-            cardFirst,
         }));
     }
 
@@ -127,16 +115,21 @@ const Filter = ({ state, setState }: Props) => {
                                         <Tooltip
                                             open={state.genreHelpListOpen}
                                             onClose={() =>
-                                                setState((prevState: HomeState) => ({
-                                                    ...prevState,
-                                                    genreHelpListOpen: false,
-                                                }))
+                                                setState(
+                                                    (prevState: HomeState) => ({
+                                                        ...prevState,
+                                                        genreHelpListOpen:
+                                                            false,
+                                                    })
+                                                )
                                             }
                                             onClick={() =>
-                                                setState((prevState: HomeState) => ({
-                                                    ...prevState,
-                                                    genreHelpListOpen: true,
-                                                }))
+                                                setState(
+                                                    (prevState: HomeState) => ({
+                                                        ...prevState,
+                                                        genreHelpListOpen: true,
+                                                    })
+                                                )
                                             }
                                             placement="right"
                                             title={
@@ -161,7 +154,7 @@ const Filter = ({ state, setState }: Props) => {
                                             color={
                                                 state.filter.genre === 'Em Alta'
                                                     ? 'secondary'
-                                                    : null
+                                                    : undefined
                                             }
                                             onClick={() =>
                                                 handleFilterGenreButtonClick(
@@ -177,7 +170,7 @@ const Filter = ({ state, setState }: Props) => {
                                             color={
                                                 state.filter.genre === 'Comédia'
                                                     ? 'secondary'
-                                                    : null
+                                                    : undefined
                                             }
                                             onClick={() =>
                                                 handleFilterGenreButtonClick(
@@ -193,7 +186,7 @@ const Filter = ({ state, setState }: Props) => {
                                             color={
                                                 state.filter.genre === 'Ação'
                                                     ? 'secondary'
-                                                    : null
+                                                    : undefined
                                             }
                                             onClick={() =>
                                                 handleFilterGenreButtonClick(
@@ -209,7 +202,7 @@ const Filter = ({ state, setState }: Props) => {
                                             color={
                                                 state.filter.genre === 'Drama'
                                                     ? 'secondary'
-                                                    : null
+                                                    : undefined
                                             }
                                             onClick={() =>
                                                 handleFilterGenreButtonClick(
@@ -225,7 +218,7 @@ const Filter = ({ state, setState }: Props) => {
                                             color={
                                                 state.filter.genre === 'Romance'
                                                     ? 'secondary'
-                                                    : null
+                                                    : undefined
                                             }
                                             onClick={() =>
                                                 handleFilterGenreButtonClick(
@@ -242,7 +235,7 @@ const Filter = ({ state, setState }: Props) => {
                                                 state.filter.genre ===
                                                 'Animação'
                                                     ? 'secondary'
-                                                    : null
+                                                    : undefined
                                             }
                                             onClick={() =>
                                                 handleFilterGenreButtonClick(
@@ -258,7 +251,7 @@ const Filter = ({ state, setState }: Props) => {
                                             color={
                                                 state.filter.genre === 'Musical'
                                                     ? 'secondary'
-                                                    : null
+                                                    : undefined
                                             }
                                             onClick={() =>
                                                 handleFilterGenreButtonClick(
@@ -275,7 +268,7 @@ const Filter = ({ state, setState }: Props) => {
                                                 state.filter.genre ===
                                                 'Biografia'
                                                     ? 'secondary'
-                                                    : null
+                                                    : undefined
                                             }
                                             onClick={() =>
                                                 handleFilterGenreButtonClick(
@@ -292,7 +285,7 @@ const Filter = ({ state, setState }: Props) => {
                                                 state.filter.genre ===
                                                 'Aventura'
                                                     ? 'secondary'
-                                                    : null
+                                                    : undefined
                                             }
                                             onClick={() =>
                                                 handleFilterGenreButtonClick(
@@ -309,7 +302,7 @@ const Filter = ({ state, setState }: Props) => {
                                                 state.filter.genre ===
                                                 'Suspense'
                                                     ? 'secondary'
-                                                    : null
+                                                    : undefined
                                             }
                                             onClick={() =>
                                                 handleFilterGenreButtonClick(

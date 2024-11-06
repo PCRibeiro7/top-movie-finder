@@ -99,19 +99,21 @@ const Home = () => {
             const cityId = await cityIdResponse.json();
             const moviesResponse = await fetch(`/api/movies?cityId=${cityId}`);
             const moviesData = await moviesResponse.json();
-            setState((prevState) => ({
-                ...prevState,
-                availableMovies: moviesData,
-                cardTotal: moviesData.length,
-                cityId: cityId,
-            }));
-            getImdbRantingbyTitle(moviesData);
+            await getImdbRantingbyTitle(moviesData, cityId);
         };
 
         init();
     }, [getLocation]);
 
-    async function onFetchMovieButtonClick({ movie, originalMovie, trailer }: { movie: string; originalMovie: string; trailer: Array<any> }) {
+    async function onFetchMovieButtonClick({
+        movie,
+        originalMovie,
+        trailer,
+    }: {
+        movie: string;
+        originalMovie: string;
+        trailer: Array<any>;
+    }) {
         const omdbRes = await omdbRequest(originalMovie);
         const res = await fetch(
             `/api/movie?movie=${movie}&cityId${state.cityId}`
@@ -183,7 +185,10 @@ const Home = () => {
         return concatenatedTimesArray;
     }
 
-    function handleMovieCardSelector(e: any, movie: { title: string; originalTitle: string; trailers: any; }) {
+    function handleMovieCardSelector(
+        e: any,
+        movie: { title: string; originalTitle: string; trailers: any }
+    ) {
         onFetchMovieButtonClick({
             movie: movie.title.trim(),
             originalMovie: movie.originalTitle.trim(),
@@ -203,40 +208,38 @@ const Home = () => {
             },
         }));
     }
-    function getImdbRantingbyTitle(availableMovies: any[]) {
+    async function getImdbRantingbyTitle(
+        availableMovies: any[],
+        cityId: string
+    ) {
         if (availableMovies) {
             let newAvailableMovies = [...availableMovies];
-            availableMovies.map((movie1: { originalTitle: any; }) => {
-                omdbRequest(movie1.originalTitle).then((res) => {
-                    availableMovies.map((movie: { originalTitle: any; }, index: number) => {
-                        if (movie.originalTitle === movie1.originalTitle) {
-                            newAvailableMovies[index].imdbRating =
-                                res.imdbRating ? res.imdbRating : '...';
-                            newAvailableMovies.sort((a, b) => {
-                                if (
-                                    a.imdbRating === 'N/A' &&
-                                    b.imdbRating === 'N/A'
-                                ) {
-                                    return 0;
-                                }
-                                if (a.imdbRating === 'N/A') {
-                                    return 1;
-                                }
-                                if (b.imdbRating === 'N/A') {
-                                    return -1;
-                                }
-                                return a.imdbRating > b.imdbRating ? -1 : 1;
-                            });
-                        }
-                        return null;
-                    });
-                });
-                return null;
+
+            for (const movie of newAvailableMovies) {
+                const res = await omdbRequest(movie.originalTitle);
+
+                movie.imdbRating = res.imdbRating ?? '...';
+            }
+
+            newAvailableMovies.sort((a, b) => {
+                if (a.imdbRating === 'N/A' && b.imdbRating === 'N/A') {
+                    return 0;
+                }
+                if (a.imdbRating === 'N/A') {
+                    return 1;
+                }
+                if (b.imdbRating === 'N/A') {
+                    return -1;
+                }
+                return a.imdbRating > b.imdbRating ? -1 : 1;
             });
+
             setState((prevState) => ({
                 ...prevState,
                 availableMovies: newAvailableMovies,
                 movieCardsAreReady: true,
+                cardTotal: newAvailableMovies.length,
+                cityId: cityId,
             }));
         }
     }
@@ -244,10 +247,7 @@ const Home = () => {
     return (
         <div style={{ minHeight: '100dvh', background: 'lightgray' }}>
             <MovieAppBar />
-            <Grid
-                container
-                justifyContent="center"
-            >
+            <Grid container justifyContent="center">
                 <Grid item xs={12}>
                     <Grid container justifyContent={'center'}>
                         <Filter state={state} setState={setState} />
