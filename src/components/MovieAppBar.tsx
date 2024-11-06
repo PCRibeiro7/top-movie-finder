@@ -9,7 +9,7 @@ const MovieAppBar = () => (
                 alt="Sem Imagem"
                 style={{ margin: '1%', width: '30px' }}
                 src={
-                    'http://icons.iconarchive.com/icons/dtafalonso/android-lollipop/256/Movie-Studio-icon.png'
+                    'https://icons.iconarchive.com/icons/dtafalonso/android-lollipop/256/Movie-Studio-icon.png'
                 }
             />
             <Typography variant="h6">Vai ver o que?</Typography>

@@ -126,7 +126,9 @@ const Home = () => {
         originalMovie: string;
         trailer: Array<any>;
     }) {
-        const omdbRes = await omdbRequest(originalMovie);
+        const omdbRes = await fetch(`/api/rating?movieName=${originalMovie}`);
+        const omdbData = await omdbRes.json();
+
         const res = await fetch(
             `/api/movie?movie=${movie}&cityId${state.cityId}`
         );
@@ -173,7 +175,7 @@ const Home = () => {
             originalMovie: originalMovie,
             trailer: trailer,
             movieId: movieRes,
-            movieInfo: omdbRes,
+            movieInfo: omdbData,
             sessionsInfo: sessionsData,
             sessionInfoIsReady: true,
             sessionTable: sessionTable,
@@ -230,9 +232,10 @@ const Home = () => {
             let newAvailableMovies = [...availableMovies];
 
             for (const movie of newAvailableMovies) {
-                const res = await omdbRequest(movie.originalTitle);
+                const res = await fetch(`/api/rating?movieName=${movie.originalTitle}`);
+                const resJson = await res.json();
 
-                movie.imdbRating = res.imdbRating ?? '...';
+                movie.imdbRating = resJson.imdbRating ?? '...';
             }
 
             newAvailableMovies.sort((a, b) => {
