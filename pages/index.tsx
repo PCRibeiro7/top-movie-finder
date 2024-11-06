@@ -138,7 +138,7 @@ const Home = () => {
         let sessionTable: {
             name: any;
             times: any[];
-            distance: number;
+            distance?: number;
             neighborhood: any;
             price: any;
         }[] = [];
@@ -152,13 +152,15 @@ const Home = () => {
                 sessionTable.push({
                     name: theater.name,
                     times: concatenateSessionTimes(theater.rooms),
-                    distance: distanceCalculator(
-                        state.currentGeographicPosition.latitude,
-                        state.currentGeographicPosition.longitude,
-                        theater.geolocation.lat,
-                        theater.geolocation.lng,
-                        'K'
-                    ),
+                    distance: theater.geolocation.lat
+                        ? distanceCalculator(
+                              state.currentGeographicPosition.latitude,
+                              state.currentGeographicPosition.longitude,
+                              theater.geolocation.lat,
+                              theater.geolocation.lng,
+                              'K'
+                          )
+                        : undefined,
                     neighborhood: theater.neighborhood,
                     price: theater.rooms[0].sessions[0].price,
                 });
