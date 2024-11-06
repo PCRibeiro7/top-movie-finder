@@ -73,28 +73,40 @@ const Home = () => {
 
     const movieInfoTableRef = useRef<HTMLDivElement>(null);
 
-    const getLocation = useCallback(() => {
+    const getLocation = useCallback(async () => {
         let location = window.navigator && window.navigator.geolocation;
         if (location) {
-            location.getCurrentPosition(
-                (position) => {
-                    assignLocation(position);
-                },
-                () => {
-                    return {
-                        latitude: 'err-latitude',
-                        longitude: 'err-longitude',
-                    };
+            const promise = new Promise<GeolocationPosition>(
+                (resolve, reject) => {
+                    location.getCurrentPosition(
+                        (position) => {
+                            assignLocation(position);
+                            resolve(position);
+                        },
+                        () => {
+                            reject('err');
+                        }
+                    );
                 }
             );
+
+            return await promise;
         }
     }, []);
 
     useEffect(() => {
         const init = async () => {
-            getLocation();
+            const position = await getLocation();
+            const reverseGeocodeResponse = await fetch(
+                `https://nominatim.openstreetmap.org/reverse.php?lat=${position?.coords.latitude}&lon=${position?.coords.longitude}&zoom=10&format=jsonv2`
+            );
+            const reverseGeocodeData = await reverseGeocodeResponse.json();
+            const city = reverseGeocodeData.name;
+            const state =
+                reverseGeocodeData.address['ISO3166-2-lvl4'].split('-')[1];
+
             const cityIdResponse = await fetch(
-                '/api/state?state=SP&cityName=São Paulo'
+                `/api/state?state=${state}&city=${city}`
             );
             const cityId = await cityIdResponse.json();
             const moviesResponse = await fetch(`/api/movies?cityId=${cityId}`);
