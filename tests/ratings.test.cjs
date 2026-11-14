@@ -18,6 +18,7 @@ const { default: omdbRequest } = require('../src/server/ratings/omdb.ts');
 const { default: handler } = require('../pages/api/rating.ts');
 const { imdbRating } = require('../src/server/ratings/imdb.ts');
 const { findImdbTitleId } = require('../src/server/ratings/imdbTitles.ts');
+const { findMovieImdbId } = require('../src/server/ratings/tmdb.ts');
 const {
     IMDB_DATASET_CACHE_TTL,
     movieRatingKey,
@@ -380,12 +381,15 @@ test('provider distinguishes directors and runtimes and recovers missing IMDb li
         { id: 25, title: 'Live Viewing', original_title: 'Live Viewing', release_date: '2026-12-29', runtime: 195, imdb_id: 'tt50488328', director: 'Ha Jung-jae' },
         { id: 26, title: 'Os Irmãos Segreto', original_title: 'Os Irmãos Segreto', release_date: '2026-11-26', runtime: 0, imdb_id: null, director: 'Federico Ferrone, Michele Manzolini' },
         { id: 27, title: 'I Fratelli Segreto', original_title: 'I Fratelli Segreto', release_date: '2025-10-22', runtime: 90, imdb_id: null, director: 'Federico Ferrone, Michele Manzolini' },
+        { id: 28, title: 'Swan Lake Filmed for IMAX', original_title: 'Le Lac des cygnes - Filmé pour IMAX', release_date: '2024-11-08', runtime: 139, imdb_id: 'tt32986839', director: 'Isabelle Julien' },
     ];
     const imdbQueries = [];
-    t.mock.method(global, 'fetch', async (url) => {
+    const discoveries = [];
+    let discoverySignal;
+    t.mock.method(global, 'fetch', async (url, options) => {
         const { hostname, pathname, searchParams } = new URL(url);
         if (hostname === 'datasets.imdbws.com') {
-            return new Response(gzipSync('tconst\taverageRating\tnumVotes\ntt32261958\t6.0\t37128\ntt45120828\t9.0\t10\ntt37899993\t6.7\t11\n'));
+            return new Response(gzipSync('tconst\taverageRating\tnumVotes\ntt32261958\t6.0\t37128\ntt45120828\t9.0\t10\ntt37899993\t6.7\t11\ntt32986839\t7.4\t58\n'));
         }
         if (hostname === 'v3.sg.media-imdb.com') {
             const query = decodeURIComponent(pathname.split('/').pop().slice(0, -5));
@@ -406,6 +410,10 @@ test('provider distinguishes directors and runtimes and recovers missing IMDb li
         if (hostname === 'www.omdbapi.com') {
             const title = searchParams.get('t');
             const id = searchParams.get('i');
+            if (title === 'Paris Opera Ballet Swan Lake') {
+                discoverySignal = options.signal;
+                return Response.json({ Response: 'False', Error: 'Request limit reached!' }, { status: 401 });
+            }
             if (title === 'Fatherland') return Response.json({ Response: 'True', Title: title, Year: '2026', Director: 'Christopher Menaul', Runtime: '106 min', imdbRating: '6.4', imdbID: 'tt0109779' });
             if (id === 'tt37304295') return Response.json({ Response: 'True', Title: 'Fatherland', Year: '2026', Director: 'Paweł Pawlikowski', Runtime: '82 min', imdbRating: '7.3', imdbID: id });
             if (id === 'tt32261958') return Response.json({ Response: 'True', Title: 'Verity', Year: '2026', imdbRating: 'N/A', imdbID: id });
@@ -415,6 +423,22 @@ test('provider distinguishes directors and runtimes and recovers missing IMDb li
             return Response.json({ Response: 'False', Error: 'Movie not found!' });
         }
         assert.equal(hostname, 'api.themoviedb.org');
+        if (pathname === '/3/search/person') {
+            assert.equal(searchParams.get('query'), 'Isabelle Julien');
+            assert.equal(options.signal, discoverySignal);
+            return Response.json({ results: [
+                { id: 100, name: 'Isabelle Julien' },
+                { id: 101, name: 'Isabelle Julien' },
+                { id: 102, name: 'Isabelle Julian' },
+            ] });
+        }
+        if (pathname.includes('/movie_credits')) {
+            discoveries.push(pathname);
+            assert.equal(searchParams.get('language'), 'en-US');
+            assert.equal(options.signal, discoverySignal);
+            const id = Number(pathname.split('/')[3]);
+            return Response.json({ id, crew: id === 100 ? [{ ...candidates[8], job: 'Director' }] : [] });
+        }
         if (pathname === '/3/search/movie') {
             const title = searchParams.get('query');
             const results = title === 'A Terra Do Meu Pai' || title === 'Fatherland'
@@ -424,6 +448,7 @@ test('provider distinguishes directors and runtimes and recovers missing IMDb li
         }
         const candidate = candidates.find((movie) => movie.id === Number(pathname.split('/')[3]));
         assert.ok(candidate);
+        if (candidate.id === 28) assert.equal(options.signal, discoverySignal);
         if (pathname.endsWith('/external_ids')) return Response.json({ imdb_id: candidate.imdb_id });
         assert.equal(searchParams.get('append_to_response'), 'credits');
         return Response.json({
@@ -439,13 +464,120 @@ test('provider distinguishes directors and runtimes and recovers missing IMDb li
         { title: 'Uma Odisseia Criativa: Em Busca De Tolkien', releaseYear: 2026, director: 'Laís Almeida', runtimeMinutes: 123 },
         { title: 'Live Viewing', releaseYear: 2026 },
         { title: 'Os Irmãos Segreto', releaseYear: 2026, director: 'Federico Ferrone, Michele Manzolini' },
+        { title: 'Paris Opera Ballet Swan Lake', releaseYear: 2026, director: 'Isabelle Julien', runtimeMinutes: 140 },
     ].map(omdbRequest));
-    assert.deepEqual(ratings.map((rating) => rating.imdbRating), ['7.3', '6.0', '9.0', 'N/A', '6.7']);
-    assert.deepEqual(ratings.map((rating) => rating.imdbID), ['tt37304295', 'tt32261958', 'tt45120828', 'tt50488328', 'tt37899993']);
+    assert.deepEqual(ratings.map((rating) => rating.imdbRating), ['7.3', '6.0', '9.0', 'N/A', '6.7', '7.4']);
+    assert.deepEqual(ratings.map((rating) => rating.imdbID), ['tt37304295', 'tt32261958', 'tt45120828', 'tt50488328', 'tt37899993', 'tt32986839']);
     assert.deepEqual(imdbQueries.sort(), ['a creative odyssey in search of tolkien', 'os irmaos segreto']);
+    assert.deepEqual(discoveries, ['/3/person/100/movie_credits', '/3/person/101/movie_credits']);
     assert.equal((await omdbRequest({ title: 'Os Irmãos Segreto', releaseYear: 2026, director: 'Different Director' })).Response, 'False');
     assert.equal(await findImdbTitleId(['Resolver ambiguous'], 2026, new AbortController().signal), null);
     assert.equal(await findImdbTitleId(['Resolver unrelated'], 2026, new AbortController().signal), null);
+});
+
+test('director discovery requires unique title and metadata evidence, respects limits, and uses the production year', async (t) => {
+    const lookup = { title: 'Paris Opera Ballet Swan Lake', releaseYear: 2026, director: 'Isabelle Julien', runtimeMinutes: 140 };
+    const movie = { id: 1319440, title: 'Swan Lake Filmed for IMAX', original_title: 'Le Lac des cygnes - Filmé pour IMAX', release_date: '2024-11-08', job: 'Director' };
+    let people = [{ id: 1, name: 'Isabelle Julien' }];
+    let credits = [movie];
+    let director = 'Isabelle Julien';
+    let runtime = 139;
+    let id = 'tt32986839';
+    let invalidPath;
+    let timeout = false;
+    let searches = 0;
+    let filmographies = 0;
+    let details = 0;
+    const controller = new AbortController();
+    const fetch = t.mock.method(global, 'fetch', async (url, options) => {
+        const { hostname, pathname, searchParams } = new URL(url);
+        assert.equal(options.signal, controller.signal);
+        if (hostname === 'v3.sg.media-imdb.com') {
+            return Response.json({ d: [
+                { id: 'tt0002026', l: movie.title, qid: 'movie', y: 2026 },
+                { id: 'tt32986839', l: movie.title, qid: 'movie', y: 2024 },
+            ] });
+        }
+        assert.equal(hostname, 'api.themoviedb.org');
+        if (pathname === invalidPath) return Response.json({ error: 'Invalid provider payload' });
+        if (pathname === '/3/search/movie') return Response.json({ results: [] });
+        if (pathname === '/3/search/person') {
+            searches++;
+            if (timeout) {
+                controller.abort(new DOMException('Lookup deadline exceeded', 'TimeoutError'));
+                options.signal.throwIfAborted();
+            }
+            return Response.json({ results: people });
+        }
+        if (pathname.endsWith('/movie_credits')) {
+            filmographies++;
+            assert.equal(searchParams.get('language'), 'en-US');
+            return Response.json({ id: Number(pathname.split('/')[3]), crew: credits });
+        }
+        details++;
+        assert.ok(credits.some((credit) => credit.id === Number(pathname.split('/')[3])));
+        return Response.json({
+            ...movie, id: Number(pathname.split('/')[3]), imdb_id: id, runtime,
+            credits: { crew: director ? [{ job: 'Director', name: director }] : [] },
+        });
+    });
+
+    for (const incomplete of [{ ...lookup, director: undefined }, { ...lookup, runtimeMinutes: undefined }]) {
+        assert.equal(await findMovieImdbId(incomplete, controller.signal), null);
+    }
+    assert.equal(searches, 0);
+    for (const metadata of [
+        { director: 'Another director', runtime: 139 },
+        { director: '', runtime: 139 },
+        { director: 'Isabelle Julien', runtime: 134 },
+        { director: 'Isabelle Julien', runtime: null },
+    ]) {
+        director = metadata.director;
+        runtime = metadata.runtime;
+        assert.equal(await findMovieImdbId(lookup, controller.signal), null);
+    }
+    director = 'Isabelle Julien';
+    runtime = 139;
+    for (const unrelated of [
+        { ...movie, job: 'Editor' },
+        { ...movie, title: 'Swan Song', original_title: 'Swan Song' },
+    ]) {
+        credits = [unrelated];
+        assert.equal(await findMovieImdbId(lookup, controller.signal), null);
+    }
+    assert.equal(details, 4);
+    credits = [movie, { ...movie, id: movie.id + 1 }];
+    assert.equal(await findMovieImdbId(lookup, controller.signal), null);
+    assert.equal(details, 6);
+
+    const previousSearches = searches;
+    assert.equal(await findMovieImdbId({ ...lookup, director: 'One, Two, Three, Four' }, controller.signal), null);
+    assert.equal(searches, previousSearches);
+    people = Array.from({ length: 4 }, (_, index) => ({ id: index + 1, name: 'Isabelle Julien' }));
+    const previousFilmographies = filmographies;
+    assert.equal(await findMovieImdbId(lookup, controller.signal), null);
+    assert.equal(filmographies, previousFilmographies);
+    people = [{ id: 1, name: 'Isabelle Julien' }];
+    credits = Array.from({ length: 6 }, (_, index) => ({ ...movie, id: movie.id + index }));
+    assert.equal(await findMovieImdbId(lookup, controller.signal), null);
+    assert.equal(details, 6);
+
+    credits = [movie, movie];
+    id = null;
+    assert.equal(await findMovieImdbId(lookup, controller.signal), 'tt32986839');
+    assert.equal(details, 7);
+    for (const path of ['/3/search/person', '/3/person/1/movie_credits', '/3/movie/1319440']) {
+        invalidPath = path;
+        await assert.rejects(findMovieImdbId(lookup, controller.signal), /Title resolver unavailable/);
+    }
+    invalidPath = undefined;
+    timeout = true;
+    const previousCalls = filmographies;
+    await assert.rejects(findMovieImdbId(lookup, controller.signal), { name: 'TimeoutError' });
+    assert.equal(filmographies, previousCalls);
+    const previousFetches = fetch.mock.callCount();
+    await assert.rejects(findMovieImdbId(lookup, controller.signal), { name: 'TimeoutError' });
+    assert.equal(fetch.mock.callCount(), previousFetches);
 });
 
 test('provider retries resolver failures immediately and refreshes films without scores after the miss TTL', async (t) => {
@@ -458,14 +590,17 @@ test('provider retries resolver failures immediately and refreshes films without
     let now = Date.now() + IMDB_DATASET_CACHE_TTL * 10;
     t.mock.method(Date, 'now', () => now);
     let attempts = 0;
+    let quotaRecovered = false;
     t.mock.method(global, 'fetch', async (url, options) => {
         const { hostname, pathname, searchParams } = new URL(url);
         if (hostname === 'datasets.imdbws.com') {
             return new Response(gzipSync('tconst\taverageRating\tnumVotes\ntt0000001\t5.0\t10\n'));
         }
         if (hostname === 'www.omdbapi.com') {
-            if (searchParams.get('t') === 'Quota retry') {
-                return Response.json({ Response: 'False', Error: 'Request limit reached!' });
+            if (searchParams.get('t') === 'Deixe-me Viver') {
+                return Response.json(quotaRecovered
+                    ? { Response: 'True', Title: 'Deixe-me Viver', imdbID: 'tt40843049', imdbRating: '7.2', Director: 'Walther Neto', Runtime: '103 min' }
+                    : { Response: 'False', Error: 'Request limit reached!' }, { status: quotaRecovered ? 200 : 401 });
             }
             return Response.json(searchParams.has('i')
                 ? { Response: 'True', imdbRating: attempts === 2 ? 'N/A' : '7.4' }
@@ -478,9 +613,9 @@ test('provider retries resolver failures immediately and refreshes films without
             const title = searchParams.get('query');
             return attempts === 1
                 ? Response.json({ status_message: 'Invalid API key' }, { status: 401 })
-                : Response.json({ results: [{ id: 7, title, original_title: title }] });
+                : Response.json({ results: [{ id: title === 'Deixe-me Viver' ? 8 : 7, title, original_title: title }] });
         }
-        return Response.json({ imdb_id: 'tt1234567' });
+        return Response.json({ imdb_id: pathname.includes('/8/') ? 'tt40843049' : 'tt1234567' });
     });
 
     await assert.rejects(omdbRequest('Resolver retry'), /Title resolver unavailable/);
@@ -490,8 +625,12 @@ test('provider retries resolver failures immediately and refreshes films without
     now += RATING_MISS_CACHE_TTL + 1;
     assert.equal((await omdbRequest('Resolver retry')).imdbRating, '7.4');
     assert.equal(attempts, 3);
-    await assert.rejects(omdbRequest('Quota retry'), /Rating provider unavailable/);
-    await assert.rejects(omdbRequest('Quota retry'), /Rating provider unavailable/);
+    const quotaMovie = { title: 'Deixe-me Viver', releaseYear: 2026, director: 'Walther Neto', runtimeMinutes: 103 };
+    await assert.rejects(omdbRequest(quotaMovie), /Rating provider unavailable/);
+    await assert.rejects(omdbRequest(quotaMovie), /Rating provider unavailable/);
+    assert.equal(attempts, 5);
+    quotaRecovered = true;
+    assert.equal((await omdbRequest(quotaMovie)).imdbRating, '7.2');
     assert.equal(attempts, 5);
 });
 

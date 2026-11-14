@@ -28,6 +28,8 @@ If OMDb's initial request fails because of quota exhaustion or another provider 
 
 Allow HTTPS access to `v3.sg.media-imdb.com` for the public IMDb title-suggestion fallback when a TMDB film lacks an IMDb link. Director/runtime evidence distinguishes ambiguous titles and corroborates alternate names. Rereleases and anniversary listings ignore the new cinema year when matching the original film.
 
+If exact-title resolution fails, TMDB director credits provide a bounded discovery fallback for listings with both director and runtime. Related titles and both metadata fields must agree on a single production. An older production year is valid with this evidence, and subsequent IMDb title suggestions use that production year. A title's presence on IMDb does not guarantee a score in OMDb or the daily dataset; an OMDb error with no dataset score remains retryable.
+
 The repository's [.npmrc](../.npmrc) enables `legacy-peer-deps` to accommodate the existing dependency graph. It also applies Node's `--use-system-ca` to npm scripts so provider HTTPS requests use operating-system trust. Keep these settings when reproducing local behavior.
 
 ## Checks
@@ -76,7 +78,7 @@ Run the relevant checks for the behavior being changed. Live results depend on p
 | Symptom | Inspect |
 | --- | --- |
 | Catalog loads but ratings fail | Server credentials, OMDb quota/availability, optional TMDB resolution, and HTTPS access to the IMDb dataset/title suggestions; provider errors remain retryable |
-| A rerelease or same-title film lacks a rating | Check label cleanup, original title, director/runtime metadata, and ambiguous provider records. A current cinema date is not necessarily the original release year |
+| A rerelease or same-title film lacks a rating | Check label cleanup, original title, director/runtime metadata, and ambiguous provider records. Director discovery requires both metadata fields and a related title. A current cinema date is not necessarily the original release year |
 | City has no results | City spelling/UF and Ingresso.com coverage; city lookup ignores case and accents |
 | Location cannot be obtained | Browser permission and Nominatim connectivity; use manual city/UF selection |
 | Certificate errors | Node version and operating-system certificate trust used by `.npmrc` |

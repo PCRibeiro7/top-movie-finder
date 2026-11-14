@@ -11,12 +11,28 @@ import { matchingMovieMetadata } from './identity';
 import { findImdbTitleId } from './imdbTitles';
 
 const MAX_IDENTITY_CANDIDATES = 5;
+const MAX_DIRECTORS = 3;
+const MAX_DIRECTOR_PEOPLE = 3;
+
+function isMovieCandidate(
+    movie: unknown,
+): movie is TmdbMovieRatingResponse['results'][number] {
+    return (
+        isRecord(movie) &&
+        typeof movie.id === 'number' &&
+        (movie.title == null || typeof movie.title === 'string') &&
+        (movie.original_title == null ||
+            typeof movie.original_title === 'string') &&
+        (movie.release_date == null || typeof movie.release_date === 'string')
+    );
+}
 
 async function tmdbJson(
     path: string,
     params: Record<string, string>,
     signal: AbortSignal,
 ): Promise<unknown> {
+    signal.throwIfAborted();
     const credential = process.env.TMDB_API_KEY?.trim() || '';
     const bearer = credential.startsWith('eyJ');
     const query = new URLSearchParams(params);
@@ -46,16 +62,7 @@ export default async function tmdbRequest(
     if (
         !isRecord(data) ||
         !Array.isArray(data.results) ||
-        data.results.some(
-            (movie) =>
-                !isRecord(movie) ||
-                typeof movie.id !== 'number' ||
-                (movie.title != null && typeof movie.title !== 'string') ||
-                (movie.original_title != null &&
-                    typeof movie.original_title !== 'string') ||
-                (movie.release_date != null &&
-                    typeof movie.release_date !== 'string'),
-        )
+        data.results.some((movie) => !isMovieCandidate(movie))
     ) {
         throw new Error('Title resolver unavailable');
     }
@@ -107,11 +114,10 @@ async function movieMetadata(id: number, signal: AbortSignal) {
     };
 }
 
-export async function findMovieImdbId(
-    movie: string | MovieRatingLookup,
+async function findExactMovieImdbId(
+    lookup: MovieRatingLookup,
     signal: AbortSignal,
 ): Promise<string | null> {
-    const lookup = normalizeRatingLookup(movie);
     const titles = [lookup.title, lookup.originalTitle].filter(
         (title): title is string => Boolean(title),
     );
@@ -226,4 +232,128 @@ export async function findMovieImdbId(
             }
             : undefined,
     );
+}
+
+function relatedMovieTitle(titles: string[], candidate: string) {
+    const keys = titles.map(movieTitleKey);
+    const key = movieTitleKey(candidate);
+    if (keys.includes(key)) return true;
+    const words = key.split(' ');
+    return words.some(
+        (word, index) =>
+            word.length >= 4 &&
+            words[index + 1]?.length >= 4 &&
+            keys.some((title) =>
+                ` ${title} `.includes(` ${word} ${words[index + 1]} `),
+            ),
+    );
+}
+
+async function findDirectorMovieImdbId(
+    lookup: MovieRatingLookup,
+    signal: AbortSignal,
+): Promise<string | null> {
+    if (!lookup.director || !lookup.runtimeMinutes) return null;
+    const directors = new Map(
+        lookup.director.split(',').map((name) => [movieTitleKey(name), name.trim()]),
+    );
+    directors.delete('');
+    if (!directors.size || directors.size > MAX_DIRECTORS) return null;
+    const people = new Set<number>();
+    for (const [key, name] of directors) {
+        const data = await tmdbJson(
+            'search/person',
+            { query: name, language: 'en-US' },
+            signal,
+        );
+        if (!isRecord(data) || !Array.isArray(data.results)) {
+            throw new Error('Title resolver unavailable');
+        }
+        for (const person of data.results) {
+            if (
+                !isRecord(person) ||
+                typeof person.id !== 'number' ||
+                !Number.isInteger(person.id) ||
+                person.id <= 0 ||
+                typeof person.name !== 'string'
+            ) {
+                throw new Error('Title resolver unavailable');
+            }
+            if (movieTitleKey(person.name) === key) {
+                people.add(person.id);
+            }
+        }
+        if (people.size > MAX_DIRECTOR_PEOPLE) return null;
+    }
+    const titles = [lookup.title, lookup.originalTitle || ''].filter(Boolean);
+    const candidates = new Map<
+        number,
+        TmdbMovieRatingResponse['results'][number]
+    >();
+    for (const id of people) {
+        const data = await tmdbJson(
+            `person/${id}/movie_credits`,
+            { language: 'en-US' },
+            signal,
+        );
+        if (!isRecord(data) || data.id !== id || !Array.isArray(data.crew)) {
+            throw new Error('Title resolver unavailable');
+        }
+        for (const movie of data.crew) {
+            if (!isRecord(movie) || typeof movie.job !== 'string') {
+                throw new Error('Title resolver unavailable');
+            }
+            if (movie.job !== 'Director') continue;
+            if (
+                !isMovieCandidate(movie) ||
+                !Number.isInteger(movie.id) ||
+                movie.id <= 0
+            ) {
+                throw new Error('Title resolver unavailable');
+            }
+            if (
+                [movie.title, movie.original_title].some(
+                    (title) =>
+                        typeof title === 'string' &&
+                        relatedMovieTitle(titles, title),
+                )
+            ) {
+                candidates.set(movie.id, movie);
+            }
+        }
+        if (candidates.size > MAX_IDENTITY_CANDIDATES) return null;
+    }
+    const matches = [];
+    for (const candidate of candidates.values()) {
+        const details = await movieMetadata(candidate.id, signal);
+        if (
+            details.director &&
+            details.director !== 'N/A' &&
+            details.runtimeMinutes &&
+            Number.isInteger(details.runtimeMinutes) &&
+            details.runtimeMinutes > 0 &&
+            matchingMovieMetadata(lookup, details) === true &&
+            [details.title, details.originalTitle].some((title) =>
+                relatedMovieTitle(titles, title),
+            )
+        ) {
+            matches.push({ candidate, details });
+        }
+    }
+    if (matches.length !== 1) return null;
+    const { candidate, details } = matches[0];
+    if (details.imdbId) return details.imdbId;
+    // This is the production year; the catalog year may be a later screening.
+    const year = Number(candidate.release_date?.match(/^(\d{4})-/)?.[1]);
+    if (!year) return null;
+    return findImdbTitleId([details.title, details.originalTitle], year, signal);
+}
+
+export async function findMovieImdbId(
+    movie: string | MovieRatingLookup,
+    signal: AbortSignal,
+): Promise<string | null> {
+    const lookup = normalizeRatingLookup(movie);
+    const exact = await findExactMovieImdbId(lookup, signal);
+    return exact || findDirectorMovieImdbId(lookup, signal);
 }

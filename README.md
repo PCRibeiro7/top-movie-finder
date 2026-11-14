@@ -30,6 +30,8 @@ When OMDb has no score for an identified film, the server falls back to [IMDb's 
 
 Director and runtime metadata help distinguish films with the same title; anniversary/rerelease listings do not use the new cinema date as the film's original release year. If TMDB identifies a film but lacks its IMDb link, the server also uses IMDb's public title suggestions at `v3.sg.media-imdb.com`. A different displayed title requires a matching TMDB canonical title and corroborating director/runtime metadata; search ranking alone is never sufficient.
 
+When exact-title resolution cannot identify a film, listings with both director and runtime can also be matched through TMDB director credits. This bounded fallback requires related titles and matching director/runtime evidence, and accepts only one verified production, including older films shown under a new cinema title. An IMDb title page does not guarantee an available score: if OMDb fails and the daily dataset has no score, the lookup remains temporarily unavailable and retryable.
+
 Environment files (`.env*`) are ignored, with `.env.example` retained as a placeholder-only template.
 
 ```sh
