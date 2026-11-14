@@ -8,6 +8,7 @@ import PlaceOutlined from '@mui/icons-material/PlaceOutlined';
 import SearchOffRounded from '@mui/icons-material/SearchOffRounded';
 import StarRounded from '@mui/icons-material/StarRounded';
 import type { HomeState, RatedMovie, SessionRow } from '../../pages';
+import { getMovieRating } from '../requests/ratingRequester';
 import distanceCalculator from '../utils/distanceCalculator';
 import MovieInfo from './MovieInfo';
 import SessionInfo from './SessionInfo';
@@ -111,9 +112,7 @@ export default function MovieCards({
         }
 
         const [rating, sessions] = await Promise.allSettled([
-            read(
-                `/api/rating?${new URLSearchParams({ movieName: movie.originalTitle || movie.title })}`,
-            ),
+            getMovieRating(movie.originalTitle || movie.title),
             read(
                 `/api/session?${new URLSearchParams({ movieId: movie.id, cityId: state.cityId })}`,
             ).then((data) => {

@@ -23,8 +23,19 @@ export type OmdbMovieRating = {
     BoxOffice:  string;
     Production: string;
     Website:    string;
-    Response:   string;
+    Response:   'True';
 }
+
+export type OmdbMovieNotFound = {
+    Error: string;
+    Response: 'False';
+};
+
+export type MovieRatingResponse = OmdbMovieRating | OmdbMovieNotFound;
+
+export type MovieRatingsBatchResponse = {
+    ratings: Record<string, MovieRatingResponse | null>;
+};
 
 export type Rating = {
     Source: string;

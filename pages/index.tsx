@@ -6,7 +6,9 @@ import Filter from '../src/components/Filter';
 import LocationPicker from '../src/components/LocationPicker';
 import MovieAppBar from '../src/components/MovieAppBar';
 import MovieCards from '../src/components/MovieCards';
+import { getMovieRating } from '../src/requests/ratingRequester';
 import type { Movie } from '../src/types/Movie';
+import { movieRatingKey, RATING_BATCH_SIZE } from '../src/utils/movieRatings';
 
 export type RatedMovie = Movie & { imdbRating?: string };
 export type SessionRow = {
@@ -243,31 +245,54 @@ export default function Home() {
                 setLoading(false);
                 revealResults();
 
-                // Show the catalog immediately; ratings enrich it as they arrive.
-                await Promise.all(
-                    movies.map(async (movie: RatedMovie) => {
-                        let imdbRating = 'N/A';
-                        try {
-                            const rating = await fetchJson(
-                                `/api/rating?${new URLSearchParams({ movieName: movie.originalTitle || movie.title })}`,
-                                signal,
-                            );
-                            imdbRating = rating?.imdbRating || 'N/A';
-                        } catch {
-                            /* A missing rating must not hide a movie. */
-                        }
-                        if (signal.aborted) return;
-                        setState((previous) => ({
-                            ...previous,
-                            availableMovies: previous.availableMovies.map(
-                                (item) =>
-                                    item.id === movie.id
-                                        ? { ...item, imdbRating }
-                                        : item,
-                            ),
-                        }));
-                    }),
-                );
+                // Enrich the catalog in batches without delaying its first render.
+                const movieNames = [
+                    ...new Set<string>(
+                        movies.map((movie: Movie) =>
+                            movieRatingKey(movie.originalTitle || movie.title),
+                        ),
+                    ),
+                ];
+                for (
+                    let index = 0;
+                    index < movieNames.length;
+                    index += RATING_BATCH_SIZE
+                ) {
+                    if (signal.aborted) return;
+                    const ratings = new Map(
+                        await Promise.all(
+                            movieNames
+                                .slice(index, index + RATING_BATCH_SIZE)
+                                .map(async (name) => {
+                                    try {
+                                        const rating = await getMovieRating(name);
+                                        return [
+                                            name,
+                                            rating.Response === 'True'
+                                                ? rating.imdbRating
+                                                : 'N/A',
+                                        ] as const;
+                                    } catch {
+                                        return [name, 'N/A'] as const;
+                                    }
+                                }),
+                        ),
+                    );
+                    if (signal.aborted) return;
+                    setState((previous) => ({
+                        ...previous,
+                        availableMovies: previous.availableMovies.map(
+                            (movie) => {
+                                const key = movieRatingKey(
+                                    movie.originalTitle || movie.title,
+                                );
+                                return ratings.has(key)
+                                    ? { ...movie, imdbRating: ratings.get(key) }
+                                    : movie;
+                            },
+                        ),
+                    }));
+                }
             } catch (error) {
                 if (signal.aborted) return;
                 setLoading(false);

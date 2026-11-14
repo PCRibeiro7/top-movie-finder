@@ -25,3 +25,9 @@ Build and run the production server:
 npm run build
 npm start
 ```
+
+Run the rating flow regression checks:
+
+```sh
+npm test
+```
