@@ -1,55 +1,53 @@
-'use client';
-
 import React, { useEffect, useRef, useState } from 'react';
-
-import { Grid, Typography } from '@mui/material';
-
+import AutoAwesomeOutlined from '@mui/icons-material/AutoAwesomeOutlined';
+import ArrowDownwardRounded from '@mui/icons-material/ArrowDownwardRounded';
+import ConfirmationNumberOutlined from '@mui/icons-material/ConfirmationNumberOutlined';
 import Filter from '../src/components/Filter';
+import LocationPicker from '../src/components/LocationPicker';
 import MovieAppBar from '../src/components/MovieAppBar';
 import MovieCards from '../src/components/MovieCards';
-import MovieInfo from '../src/components/MovieInfo';
-import SessionInfo from '../src/components/SessionInfo';
+import type { Movie } from '../src/types/Movie';
 
+export type RatedMovie = Movie & { imdbRating?: string };
+export type SessionRow = {
+    name: string;
+    times: string[];
+    distance?: number;
+    neighborhood: string;
+    price?: number;
+};
 export interface HomeState {
     movie: string;
     originalMovie: string;
     movieInfo: Record<string, any>;
+    selectedMovie: RatedMovie | null;
     cityId: string;
     movieId: string;
-    availableMovies: Array<any>;
-    sessionsInfo: Array<any>;
+    availableMovies: RatedMovie[];
+    sessionsInfo: any[];
     sessionInfoIsReady: boolean;
-    currentGeographicPosition: {
-        latitude: number | undefined;
-        longitude: number | undefined;
-    };
-    sessionTableSortColumn: string;
+    currentGeographicPosition: { latitude?: number; longitude?: number };
+    sessionTableSortColumn: keyof SessionRow;
     sessionTableSortDirection: number;
-    sessionTable: Array<any>;
+    sessionTable: SessionRow[];
     cardsToShow: number;
     cardFirst: number;
-    cardTotal: number;
-    showFilter: boolean;
-    filter: {
-        genre: string;
-        title: string;
-    };
-    genreHelpListOpen: boolean;
+    filter: { genre: string; title: string };
     movieCardsAreReady: boolean;
-    trailer: Array<any>;
+    trailer: Movie['trailers'];
 }
+type CityLocation = { city: string; state: string };
 
 function getLocation(signal: AbortSignal): Promise<GeolocationPosition> {
     return new Promise((resolve, reject) => {
         if (!navigator.geolocation) {
             reject(
                 new Error(
-                    'Seu navegador não oferece acesso à localização. Informe sua cidade abaixo.'
-                )
+                    'Seu navegador não oferece acesso à localização. Informe sua cidade acima.',
+                ),
             );
             return;
         }
-
         const cleanup = () => {
             clearTimeout(timeout);
             signal.removeEventListener('abort', onAbort);
@@ -62,17 +60,15 @@ function getLocation(signal: AbortSignal): Promise<GeolocationPosition> {
             cleanup();
             reject(
                 new Error(
-                    'Não foi possível obter sua localização. Informe sua cidade ou tente novamente.'
-                )
+                    'Não foi possível obter sua localização. Informe sua cidade ou tente novamente.',
+                ),
             );
         }, 10000);
-
         signal.addEventListener('abort', onAbort, { once: true });
         if (signal.aborted) {
             onAbort();
             return;
         }
-
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 cleanup();
@@ -83,12 +79,12 @@ function getLocation(signal: AbortSignal): Promise<GeolocationPosition> {
                 reject(
                     new Error(
                         error.code === 1
-                            ? 'O acesso à localização foi bloqueado. Permita o acesso no navegador ou informe sua cidade.'
-                            : 'Sua localização está indisponível. Informe sua cidade ou tente novamente.'
-                    )
+                            ? 'O acesso à localização foi bloqueado. Você pode informar sua cidade no formulário acima.'
+                            : 'Sua localização está indisponível. Informe sua cidade ou tente novamente.',
+                    ),
                 );
             },
-            { timeout: 10000, maximumAge: 300000 }
+            { timeout: 10000, maximumAge: 300000 },
         );
     });
 }
@@ -97,67 +93,87 @@ async function fetchJson(url: string, signal: AbortSignal) {
     const response = await fetch(url, {
         signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]),
     });
-    if (!response.ok) {
+    if (!response.ok)
         throw new Error(
-            'Não foi possível consultar os filmes para esta cidade. Confira a cidade e a UF ou tente novamente.'
+            'Não foi possível consultar os filmes. Confira a cidade e o estado ou tente novamente.',
         );
-    }
     return response.json();
 }
 
-const Home = () => {
-    const [state, setState] = React.useState<HomeState>({
+export default function Home() {
+    const [state, setState] = useState<HomeState>({
         movie: '',
         originalMovie: '',
         movieInfo: {},
+        selectedMovie: null,
         cityId: '',
         movieId: '',
         availableMovies: [],
         sessionsInfo: [],
         sessionInfoIsReady: false,
-        currentGeographicPosition: {
-            latitude: undefined,
-            longitude: undefined,
-        },
+        currentGeographicPosition: {},
         sessionTableSortColumn: 'distance',
         sessionTableSortDirection: 1,
         sessionTable: [],
         cardsToShow: 10,
         cardFirst: 0,
-        cardTotal: 0,
-        showFilter: false,
-        filter: {
-            genre: '',
-            title: '',
-        },
-        genreHelpListOpen: false,
+        filter: { genre: '', title: '' },
         movieCardsAreReady: false,
         trailer: [],
     });
-
-    const movieInfoTableRef = useRef<HTMLDivElement>(null);
     const [loadError, setLoadError] = useState<string | null>(null);
-    const [loadingMessage, setLoadingMessage] = useState(
-        'Buscando sua localização...'
-    );
+    const [loading, setLoading] = useState(false);
+    const [loadingMessage, setLoadingMessage] = useState('');
     const [locationAttempt, setLocationAttempt] = useState(0);
-    const [manualLocation, setManualLocation] = useState<{
-        city: string;
-        state: string;
-    } | null>(null);
+    const [manualLocation, setManualLocation] = useState<CityLocation | null>(
+        null,
+    );
+    const [selectedLocation, setSelectedLocation] =
+        useState<CityLocation | null>(null);
+    const currentLocation = selectedLocation
+        ? `${selectedLocation.city}, ${selectedLocation.state}`
+        : '';
+    const scrollToResults = useRef(false);
+    const [sort, setSort] = useState('rating');
 
     useEffect(() => {
+        try {
+            const stored = JSON.parse(
+                localStorage.getItem('movie-finder-city') || 'null',
+            );
+            if (
+                typeof stored?.city === 'string' &&
+                /^[A-Z]{2}$/.test(stored?.state)
+            ) {
+                setManualLocation({ city: stored.city, state: stored.state });
+            }
+        } catch {
+            /* City selection also works when browser storage is unavailable. */
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!manualLocation && !locationAttempt) return;
         const controller = new AbortController();
         const { signal } = controller;
         setLoadError(null);
+        setLoading(true);
         setLoadingMessage(
             manualLocation
-                ? 'Carregando filmes...'
-                : 'Buscando sua localização...'
+                ? 'Buscando os filmes da sua cidade...'
+                : 'Buscando sua localização...',
         );
-        setState((previous) => ({ ...previous, movieCardsAreReady: false }));
+        setState((previous) => ({
+            ...previous,
+            movieCardsAreReady: false,
+            selectedMovie: null,
+            availableMovies: [],
+            cardFirst: 0,
+            filter: { genre: '', title: '' },
+            currentGeographicPosition: {},
+        }));
 
-        const init = async () => {
+        async function init() {
             try {
                 let location = manualLocation;
                 if (!location) {
@@ -173,7 +189,7 @@ const Home = () => {
                     setLoadingMessage('Identificando sua cidade...');
                     const data = await fetchJson(
                         `https://nominatim.openstreetmap.org/reverse?lat=${position.coords.latitude}&lon=${position.coords.longitude}&zoom=10&format=jsonv2`,
-                        signal
+                        signal,
                     );
                     const address = data.address;
                     const city =
@@ -185,71 +201,76 @@ const Home = () => {
                     const region = address?.['ISO3166-2-lvl4'];
                     if (!city || !/^BR-[A-Z]{2}$/.test(region ?? '')) {
                         throw new Error(
-                            'Não foi possível identificar uma cidade brasileira na sua localização. Informe sua cidade abaixo.'
+                            'Não foi possível identificar uma cidade brasileira. Informe sua cidade no formulário acima.',
                         );
                     }
                     location = { city, state: region.slice(3) };
                 }
-
-                setLoadingMessage('Carregando filmes...');
-                const query = new URLSearchParams(location);
-                const cityId = await fetchJson(`/api/state?${query}`, signal);
+                setLoadingMessage('Preparando a programação para você...');
+                const cityId = await fetchJson(
+                    `/api/state?${new URLSearchParams(location)}`,
+                    signal,
+                );
                 if (typeof cityId !== 'string' || !cityId) {
                     throw new Error(
-                        'Não encontramos cinemas nesta cidade. Confira a cidade e a UF.'
+                        'Não encontramos cinemas nesta cidade. Confira o nome e o estado e tente novamente.',
                     );
                 }
                 const movies = await fetchJson(
-                    `/api/movies?cityId=${encodeURIComponent(cityId)}`,
-                    signal
+                    `/api/movies?${new URLSearchParams({ cityId })}`,
+                    signal,
                 );
-                if (!Array.isArray(movies)) {
+                if (!Array.isArray(movies))
                     throw new Error(
-                        'Não foi possível carregar os filmes. Tente novamente.'
+                        'Não foi possível carregar os filmes. Tente novamente.',
                     );
-                }
                 if (signal.aborted) return;
-
+                setSelectedLocation(location);
+                try {
+                    localStorage.setItem(
+                        'movie-finder-city',
+                        JSON.stringify(location),
+                    );
+                } catch {
+                    /* Storage is optional. */
+                }
                 setState((previous) => ({
                     ...previous,
                     availableMovies: movies,
                     movieCardsAreReady: true,
-                    cardTotal: movies.length,
-                    cardFirst: 0,
                     cityId,
                 }));
+                setLoading(false);
+                revealResults();
 
-                const ratedMovies = await Promise.all(
-                    movies.map(async (movie) => {
+                // Show the catalog immediately; ratings enrich it as they arrive.
+                await Promise.all(
+                    movies.map(async (movie: RatedMovie) => {
+                        let imdbRating = 'N/A';
                         try {
-                            const query = new URLSearchParams({
-                                movieName: movie.originalTitle || movie.title,
-                            });
                             const rating = await fetchJson(
-                                `/api/rating?${query}`,
-                                signal
+                                `/api/rating?${new URLSearchParams({ movieName: movie.originalTitle || movie.title })}`,
+                                signal,
                             );
-                            return {
-                                ...movie,
-                                imdbRating: rating?.imdbRating || 'N/A',
-                            };
+                            imdbRating = rating?.imdbRating || 'N/A';
                         } catch {
-                            return { ...movie, imdbRating: 'N/A' };
+                            /* A missing rating must not hide a movie. */
                         }
-                    })
+                        if (signal.aborted) return;
+                        setState((previous) => ({
+                            ...previous,
+                            availableMovies: previous.availableMovies.map(
+                                (item) =>
+                                    item.id === movie.id
+                                        ? { ...item, imdbRating }
+                                        : item,
+                            ),
+                        }));
+                    }),
                 );
-                if (signal.aborted) return;
-                ratedMovies.sort(
-                    (a, b) =>
-                        (parseFloat(b.imdbRating) || 0) -
-                        (parseFloat(a.imdbRating) || 0)
-                );
-                setState((previous) => ({
-                    ...previous,
-                    availableMovies: ratedMovies,
-                }));
             } catch (error) {
                 if (signal.aborted) return;
+                setLoading(false);
                 setLoadError(
                     error instanceof Error &&
                         ![
@@ -259,71 +280,171 @@ const Home = () => {
                             'AbortError',
                         ].includes(error.name)
                         ? error.message
-                        : 'Não foi possível concluir a busca. Confira sua conexão, informe sua cidade ou tente novamente.'
+                        : 'Não foi possível concluir a busca. Confira sua conexão ou tente outra cidade.',
                 );
+                revealResults();
             }
-        };
-
+        }
         init();
         return () => controller.abort();
     }, [locationAttempt, manualLocation]);
 
-    useEffect(() => {
-        if (movieInfoTableRef.current) {
-            window.scrollTo({
-                left: 0,
-                top: movieInfoTableRef.current.offsetTop,
-                behavior: 'smooth',
+    function revealResults() {
+        if (!scrollToResults.current) return;
+        scrollToResults.current = false;
+        requestAnimationFrame(() => {
+            const catalog = document.getElementById('em-cartaz');
+            catalog?.focus({ preventScroll: true });
+            catalog?.scrollIntoView({
+                behavior: window.matchMedia('(prefers-reduced-motion: reduce)')
+                    .matches
+                    ? 'auto'
+                    : 'smooth',
             });
-        }
-    }, [state.movieId]);
+        });
+    }
+
+    function focusLocation() {
+        document.getElementById('city')?.focus({ preventScroll: true });
+        document
+            .getElementById('inicio')
+            ?.scrollIntoView({ behavior: 'smooth' });
+    }
 
     return (
-        <div style={{ minHeight: '100dvh', background: 'lightgray' }}>
-            <MovieAppBar />
-            <Grid container justifyContent="center">
-                <Grid item xs={12}>
-                    <Grid container justifyContent={'center'}>
-                        <Filter state={state} setState={setState} />
-                        <MovieCards
-                            state={state}
-                            setState={setState}
-                            loadError={loadError}
-                            loadingMessage={loadingMessage}
-                            onRetry={() => {
-                                setManualLocation(null);
-                                setLocationAttempt((attempt) => attempt + 1);
-                            }}
-                            onCitySubmit={(city, state) => {
-                                setManualLocation({ city, state });
-                            }}
-                        />
-
-                        <div ref={movieInfoTableRef}></div>
-                        {Object.entries(state.movieInfo).length !== 0 ? (
-                            <MovieInfo state={state} />
-                        ) : (
-                            <Grid container justifyContent="center">
-                                {' '}
-                                <Grid item xs={11}>
-                                    <Typography
-                                        align="center"
-                                        style={{ padding: '1%' }}
-                                        variant="h4"
-                                    >
-                                        {state.movie}
-                                    </Typography>{' '}
-                                </Grid>
-                            </Grid>
-                        )}
-                        {state.sessionInfoIsReady ? (
-                            <SessionInfo state={state} setState={setState} />
-                        ) : null}
-                    </Grid>
-                </Grid>
-            </Grid>
+        <div className="app-shell" id="inicio">
+            <a className="skip-link" href="#em-cartaz">
+                Pular para os filmes
+            </a>
+            <MovieAppBar
+                location={currentLocation}
+                onLocationClick={focusLocation}
+            />
+            <main className="page-width">
+                <section className="hero" aria-labelledby="hero-title">
+                    <div className="hero-copy">
+                        <div className="eyebrow">
+                            <span className="live-dot" /> PARA QUEM AMA A TELA
+                            GRANDE
+                        </div>
+                        <h1 id="hero-title">
+                            Menos indecisão.
+                            <br />
+                            Mais{' '}
+                            <span className="cinema-word">
+                                cinema
+                                <svg viewBox="0 0 360 20" aria-hidden="true">
+                                    <path d="M3 14 Q165 -6 353 9" />
+                                </svg>
+                            </span>
+                            <span className="hero-period">.</span>
+                        </h1>
+                        <p>
+                            O próximo filme favorito está por aí.
+                            <br className="desktop-break" /> Descubra o que vale
+                            o ingresso nos cinemas perto de você.
+                        </p>
+                        <div className="hero-pills">
+                            <span>
+                                <AutoAwesomeOutlined /> Boas histórias
+                            </span>
+                            <span>
+                                <ConfirmationNumberOutlined /> Sessões perto de
+                                você
+                            </span>
+                        </div>
+                        <a className="browse-link" href="#em-cartaz">
+                            Vamos encontrar seu próximo filme{' '}
+                            <ArrowDownwardRounded />
+                        </a>
+                        <span className="hero-decoration" aria-hidden="true">
+                            ✳
+                        </span>
+                    </div>
+                    <LocationPicker
+                        loading={loading}
+                        location={currentLocation}
+                        selectedLocation={selectedLocation}
+                        onCitySubmit={(city, region) => {
+                            scrollToResults.current = true;
+                            setManualLocation({ city, state: region });
+                        }}
+                        onLocate={() => {
+                            scrollToResults.current = true;
+                            setManualLocation(null);
+                            setLocationAttempt((attempt) => attempt + 1);
+                        }}
+                    />
+                </section>
+                <section
+                    className="catalog"
+                    id="em-cartaz"
+                    aria-labelledby="catalog-title"
+                    tabIndex={-1}
+                >
+                    <div className="catalog-heading">
+                        <div>
+                            <div className="eyebrow section-eyebrow">
+                                A PRÓXIMA BOA ESCOLHA
+                            </div>
+                            <div className="catalog-title-row">
+                                <h2 id="catalog-title">
+                                    Em cartaz
+                                    {state.movieCardsAreReady && (
+                                        <span className="result-count">
+                                            {state.availableMovies.length}
+                                        </span>
+                                    )}
+                                </h2>
+                                <span className="catalog-location">
+                                    {currentLocation || 'Na sua cidade'}
+                                </span>
+                            </div>
+                        </div>
+                        <label className="sort-control">
+                            Ordenar por
+                            <select
+                                aria-label="Ordenar filmes"
+                                value={sort}
+                                onChange={(event) => {
+                                    setSort(event.target.value);
+                                    setState((previous) => ({
+                                        ...previous,
+                                        cardFirst: 0,
+                                    }));
+                                }}
+                            >
+                                <option value="rating">Melhor avaliação</option>
+                                <option value="title">Título: A a Z</option>
+                                <option value="release">Lançamentos</option>
+                            </select>
+                        </label>
+                    </div>
+                    <Filter state={state} setState={setState} />
+                    <MovieCards
+                        state={state}
+                        setState={setState}
+                        loadError={loadError}
+                        loadingMessage={loadingMessage}
+                        loading={loading}
+                        sort={sort}
+                        onLocationClick={focusLocation}
+                        onRetry={() =>
+                            setLocationAttempt((attempt) => attempt + 1)
+                        }
+                    />
+                </section>
+            </main>
+            <footer className="site-footer page-width">
+                <span className="footer-brand">
+                    <ConfirmationNumberOutlined /> A vida fica melhor com um bom
+                    filme.
+                </span>
+                <span>
+                    Feito para quem ama cinema.{' '}
+                    <span className="footer-star">✦</span>
+                </span>
+            </footer>
         </div>
     );
-};
-
-export default Home;
+}

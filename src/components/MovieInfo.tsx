@@ -1,287 +1,118 @@
-import {
-    Grid,
-    Hidden,
-    Paper,
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableRow,
-    Typography,
-} from '@mui/material';
-import { HomeState } from '../../pages';
+import PlayArrowRounded from '@mui/icons-material/PlayArrowRounded';
+import StarRounded from '@mui/icons-material/StarRounded';
+import AccessTimeRounded from '@mui/icons-material/AccessTimeRounded';
+import LocalMoviesOutlined from '@mui/icons-material/LocalMoviesOutlined';
+import type { HomeState } from '../../pages';
 
-type MovieInfoProps = {
-    state: HomeState;
-};
+export default function MovieInfo({ state }: { state: HomeState }) {
+    const movie = state.selectedMovie;
+    if (!movie) return null;
+    const info = state.movieInfo;
+    const rating = parseFloat(info.imdbRating || movie.imdbRating);
+    const duration =
+        Number(movie.duration) > 0
+            ? `${movie.duration} min`
+            : info.Runtime !== 'N/A'
+              ? info.Runtime
+              : '';
+    const poster =
+        movie.images?.[0]?.url || (info.Poster !== 'N/A' ? info.Poster : '');
+    const rawTrailer = state.trailer?.[0]?.url;
+    let trailer: string | undefined;
+    try {
+        const url = new URL(
+            rawTrailer?.startsWith('http')
+                ? rawTrailer
+                : `https://${rawTrailer}`,
+        );
+        if (rawTrailer && ['https:', 'http:'].includes(url.protocol))
+            trailer = url.href;
+    } catch {
+        /* Hide a trailer link if the provider has no valid URL. */
+    }
 
-const MovieInfo = ({ state }: MovieInfoProps) => (
-    <div>
-        <Hidden xsDown>
-            <Grid item>
-                <Paper
-                    style={{
-                        padding: '1%',
-                        margin: '1%',
-                        overflow: 'auto',
-                    }}
-                >
-                    <Typography
-                        style={{
-                            padding: '1%',
+    return (
+        <section className="movie-details">
+            <div className="detail-poster">
+                <span className="poster-fallback">
+                    <LocalMoviesOutlined />
+                </span>
+                {poster && (
+                    <img
+                        src={poster}
+                        alt={`Pôster de ${movie.title}`}
+                        onError={(event) => {
+                            event.currentTarget.style.display = 'none';
                         }}
-                        variant="h5"
+                    />
+                )}
+            </div>
+            <div className="detail-copy">
+                <div className="eyebrow">SEU PRÓXIMO FILME?</div>
+                <h2 id="movie-detail-title">{movie.title}</h2>
+                {movie.originalTitle && movie.originalTitle !== movie.title && (
+                    <p className="original-title">{movie.originalTitle}</p>
+                )}
+                <div className="detail-metadata">
+                    {Number.isFinite(rating) && rating > 0 && (
+                        <span className="detail-rating">
+                            <StarRounded />
+                            {rating}
+                            <small>/ 10 IMDb</small>
+                        </span>
+                    )}
+                    {Number(info.Metascore) > 0 && (
+                        <span>{info.Metascore} Metascore</span>
+                    )}
+                    {duration && (
+                        <span>
+                            <AccessTimeRounded />
+                            {duration}
+                        </span>
+                    )}
+                    {movie.contentRating && (
+                        <span className="content-rating">
+                            {movie.contentRating}
+                        </span>
+                    )}
+                </div>
+                <div className="detail-genres">
+                    {(movie.genres || []).map((genre) => (
+                        <span key={genre}>{genre}</span>
+                    ))}
+                </div>
+                <p className="synopsis">
+                    {movie.synopsis ||
+                        (info.Plot !== 'N/A' && info.Plot) ||
+                        'A sinopse deste filme ainda não está disponível.'}
+                </p>
+                {movie.director && (
+                    <p className="detail-credit">
+                        <strong>Direção</strong> {movie.director}
+                    </p>
+                )}
+                {movie.cast && (
+                    <p className="detail-credit">
+                        <strong>Elenco</strong> {movie.cast}
+                    </p>
+                )}
+                {info.Awards && info.Awards !== 'N/A' && (
+                    <p className="detail-credit">
+                        <strong>Prêmios</strong> {info.Awards}
+                    </p>
+                )}
+                {trailer && (
+                    <a
+                        className="button button-outline trailer-button"
+                        href={trailer}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`Assistir ao trailer de ${movie.title} (abre em nova aba)`}
                     >
-                        {' '}
-                        Informações do Filme:
-                    </Typography>
-                    <Table>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell align="right">Poster</TableCell>
-                                <TableCell align="right">Título</TableCell>
-                                <TableCell align="right">Gênero</TableCell>
-                                <TableCell align="right">Duração</TableCell>
-                                <TableCell align="right">Nota iMDb</TableCell>
-                                <TableCell align="right">Metascore</TableCell>
-                                <TableCell align="right">Prêmios</TableCell>
-                                <TableCell align="center">Plot</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {Object.entries(state.movieInfo).length !== 0 ? (
-                                <TableRow key={state.movieInfo.name}>
-                                    <TableCell
-                                        component="th"
-                                        scope="row"
-                                        align="right"
-                                    >
-                                        <div>
-                                            <a
-                                                rel="noopener noreferrer"
-                                                target="_blank"
-                                                href={
-                                                    state.trailer.length
-                                                        ? 'http://'.concat(
-                                                              state.trailer[0].url
-                                                                  .replace(
-                                                                      'www.',
-                                                                      ''
-                                                                  )
-                                                                  .replace(
-                                                                      'https://',
-                                                                      ''
-                                                                  )
-                                                          )
-                                                        : undefined
-                                                }
-                                            >
-                                                <img
-                                                    alt="Sem Poster Irmão"
-                                                    width="100px"
-                                                    src={state.movieInfo.Poster}
-                                                />
-                                            </a>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell align="right">
-                                        {state.movieInfo.Title}
-                                    </TableCell>
-                                    <TableCell align="right">
-                                        {state.movieInfo.Genre}
-                                    </TableCell>
-                                    <TableCell align="right">
-                                        {state.movieInfo.Runtime}
-                                    </TableCell>
-                                    <TableCell align="right">
-                                        {state.movieInfo.imdbRating}
-                                    </TableCell>
-                                    <TableCell align="right">
-                                        {state.movieInfo.Metascore}
-                                    </TableCell>
-                                    <TableCell align="right">
-                                        {state.movieInfo.Awards}
-                                    </TableCell>
-                                    <TableCell align="center">
-                                        {state.movieInfo.Plot}
-                                    </TableCell>
-                                </TableRow>
-                            ) : null}
-                        </TableBody>
-                    </Table>
-                </Paper>
-            </Grid>
-        </Hidden>
-        <Hidden smUp>
-            <Grid item>
-                <Paper
-                    style={{
-                        padding: '3%',
-                        margin: '3%',
-                    }}
-                >
-                    <Grid container>
-                        <Grid item xs={6}>
-                            <a
-                                rel="noopener noreferrer"
-                                target="_blank"
-                                href={
-                                    state.trailer.length
-                                        ? 'http://'.concat(
-                                              state.trailer[0].url
-                                                  .replace('www.', '')
-                                                  .replace('https://', '')
-                                          )
-                                        : undefined
-                                }
-                            >
-                                <img
-                                    alt="Sem Poster Irmão"
-                                    width="100%"
-                                    src={state.movieInfo.Poster}
-                                />
-                            </a>
-                        </Grid>
-
-                        <Grid item xs={6}>
-                            <Grid
-                                container
-                                style={{
-                                    height: '250px',
-                                }}
-                            >
-                                <Grid item xs={6}>
-                                    <Typography
-                                        style={{
-                                            margin: '10%',
-                                            marginLeft: '20%',
-                                            fontWeight: 'bold',
-                                        }}
-                                        variant="body2"
-                                        align="left"
-                                    >
-                                        {'Título:'}
-                                    </Typography>
-                                </Grid>
-                                <Grid item xs={6}>
-                                    <Typography
-                                        style={{
-                                            margin: '10%',
-                                        }}
-                                        variant="body2"
-                                        align="right"
-                                    >
-                                        {state.movieInfo.Title}
-                                    </Typography>
-                                </Grid>
-                                <Grid item xs={6}>
-                                    <Typography
-                                        style={{
-                                            margin: '10%',
-                                            marginLeft: '20%',
-                                            fontWeight: 'bold',
-                                        }}
-                                        variant="body2"
-                                        align="left"
-                                    >
-                                        {'Gênero:'}
-                                    </Typography>
-                                </Grid>
-                                <Grid item xs={6}>
-                                    <Typography
-                                        style={{
-                                            margin: '10%',
-                                        }}
-                                        variant="body2"
-                                        align="right"
-                                    >
-                                        {state.movieInfo.Genre}
-                                    </Typography>
-                                </Grid>
-                                <Grid item xs={6}>
-                                    <Typography
-                                        style={{
-                                            margin: '10%',
-                                            marginLeft: '20%',
-                                            fontWeight: 'bold',
-                                        }}
-                                        variant="body2"
-                                        align="left"
-                                    >
-                                        {'Nota iMDb:'}
-                                    </Typography>
-                                </Grid>
-                                <Grid item xs={6}>
-                                    <Typography
-                                        style={{
-                                            margin: '10%',
-                                        }}
-                                        variant="body2"
-                                        align="right"
-                                    >
-                                        {state.movieInfo.imdbRating}
-                                    </Typography>
-                                </Grid>
-                                <Grid item xs={6}>
-                                    <Typography
-                                        style={{
-                                            margin: '10%',
-                                            marginLeft: '20%',
-                                            fontWeight: 'bold',
-                                        }}
-                                        variant="body2"
-                                        align="left"
-                                    >
-                                        {'Prêmios:'}
-                                    </Typography>
-                                </Grid>
-                                <Grid item xs={6}>
-                                    <Grid container>
-                                        <Grid item xs={12}>
-                                            <Typography
-                                                style={{
-                                                    margin: '10%',
-                                                    overflow: 'auto',
-                                                    maxHeight: '80px',
-                                                }}
-                                                variant="body2"
-                                                align="right"
-                                            >
-                                                {state.movieInfo.Awards}
-                                            </Typography>
-                                        </Grid>
-                                    </Grid>
-                                </Grid>
-                            </Grid>
-                        </Grid>
-                        <Grid item xs={12}>
-                            <Typography
-                                style={{
-                                    marginLeft: '3%',
-                                    marginTop: '3%',
-                                    fontWeight: 'bold',
-                                }}
-                                variant="body2"
-                                align="left"
-                            >
-                                {'Plot:'}
-                            </Typography>
-                            <Typography
-                                style={{
-                                    margin: '1%',
-                                    marginLeft: '3%',
-                                }}
-                                variant="body2"
-                                align="left"
-                            >
-                                {state.movieInfo.Plot}
-                            </Typography>
-                        </Grid>
-                    </Grid>
-                </Paper>
-            </Grid>
-        </Hidden>
-    </div>
-);
-
-export default MovieInfo;
+                        <PlayArrowRounded /> Assistir ao trailer
+                    </a>
+                )}
+            </div>
+        </section>
+    );
+}

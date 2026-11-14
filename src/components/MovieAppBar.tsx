@@ -1,20 +1,44 @@
-import React from 'react';
-import { AppBar, Toolbar, Typography } from '@mui/material';
-import img from 'next/image';
+import ArrowOutwardRounded from '@mui/icons-material/ArrowOutwardRounded';
+import ConfirmationNumberOutlined from '@mui/icons-material/ConfirmationNumberOutlined';
+import PlaceOutlined from '@mui/icons-material/PlaceOutlined';
 
-const MovieAppBar = () => (
-    <AppBar position="static" style={{ background: 'black' }}>
-        <Toolbar>
-            <img
-                alt="Sem Imagem"
-                style={{ margin: '1%', width: '30px' }}
-                src={
-                    'https://icons.iconarchive.com/icons/dtafalonso/android-lollipop/256/Movie-Studio-icon.png'
-                }
-            />
-            <Typography variant="h6">Vai ver o que?</Typography>
-        </Toolbar>
-    </AppBar>
+type Props = { location: string; onLocationClick: () => void };
+
+const MovieAppBar = ({ location, onLocationClick }: Props) => (
+    <header className="site-header">
+        <div className="page-width header-inner">
+            <a
+                className="brand"
+                href="#inicio"
+                aria-label="Vai ver o quê? Início"
+            >
+                <span className="brand-symbol">
+                    <ConfirmationNumberOutlined />
+                </span>
+                <span>
+                    vai ver o quê<span className="brand-question">?</span>
+                </span>
+            </a>
+            <nav className="header-nav" aria-label="Navegação principal">
+                <a href="#em-cartaz">
+                    Em cartaz <ArrowOutwardRounded />
+                </a>
+                <span className="header-divider" />
+                <button
+                    className="location-nav"
+                    onClick={onLocationClick}
+                    aria-label={
+                        location
+                            ? `Mudar cidade: ${location}`
+                            : 'Escolher cidade'
+                    }
+                >
+                    <PlaceOutlined />
+                    <span>{location || 'Escolha sua cidade'}</span>
+                </button>
+            </nav>
+        </div>
+    </header>
 );
 
 export default MovieAppBar;

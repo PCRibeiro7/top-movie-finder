@@ -1,355 +1,453 @@
-import StarIcon from '@mui/icons-material/Star';
-import {
-    Alert,
-    Button,
-    CircularProgress,
-    Grid,
-    Paper,
-    Slider,
-    TextField,
-    Typography,
-} from '@mui/material';
-import { MouseEvent, useState } from 'react';
-import { HomeState } from '../../pages';
+import { useEffect, useRef, useState } from 'react';
+import { Alert, Button, Dialog, IconButton, Skeleton } from '@mui/material';
+import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded';
+import CloseRounded from '@mui/icons-material/CloseRounded';
+import ConfirmationNumberOutlined from '@mui/icons-material/ConfirmationNumberOutlined';
+import LocalMoviesOutlined from '@mui/icons-material/LocalMoviesOutlined';
+import PlaceOutlined from '@mui/icons-material/PlaceOutlined';
+import SearchOffRounded from '@mui/icons-material/SearchOffRounded';
+import StarRounded from '@mui/icons-material/StarRounded';
+import type { HomeState, RatedMovie, SessionRow } from '../../pages';
 import distanceCalculator from '../utils/distanceCalculator';
+import MovieInfo from './MovieInfo';
+import SessionInfo from './SessionInfo';
 
-type MovieCardsProps = {
+type Props = {
     state: HomeState;
     setState: React.Dispatch<React.SetStateAction<HomeState>>;
     loadError: string | null;
     loadingMessage: string;
+    loading: boolean;
+    sort: string;
+    onLocationClick: () => void;
     onRetry: () => void;
-    onCitySubmit: (city: string, state: string) => void;
 };
 
-const MovieCards = ({
+function normalized(value: string) {
+    return value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLocaleLowerCase('pt-BR');
+}
+
+export default function MovieCards({
     state,
     setState,
     loadError,
     loadingMessage,
+    loading,
+    sort,
+    onLocationClick,
     onRetry,
-    onCitySubmit,
-}: MovieCardsProps) => {
-    const [city, setCity] = useState('');
-    const [region, setRegion] = useState('');
+}: Props) {
+    const [open, setOpen] = useState(false);
+    const [detailsLoading, setDetailsLoading] = useState(false);
+    const [sessionError, setSessionError] = useState(false);
+    const request = useRef<AbortController | null>(null);
+    useEffect(() => () => request.current?.abort(), []);
+    useEffect(() => {
+        request.current?.abort();
+        setOpen(false);
+    }, [state.cityId, loading]);
 
-    function concatenateSessionTimes(roomsArray: any[]) {
-        let concatenatedTimesArray: any[] = [];
-        if (roomsArray) {
-            roomsArray.map((room) => {
-                room.sessions.map((session: { date: { hour: any } }) => {
-                    if (!concatenatedTimesArray.includes(session.date.hour)) {
-                        concatenatedTimesArray.push(`${session.date.hour} `);
-                    }
-                    return null;
-                });
-                return null;
-            });
-        }
-        concatenatedTimesArray = concatenatedTimesArray.sort(
-            (a, b) => Number(a.slice(0, 3)) - Number(b.slice(0, 3))
-        );
-        return concatenatedTimesArray;
+    const movies = state.availableMovies
+        .filter(
+            (movie) =>
+                (!state.filter.genre ||
+                    movie.genres?.includes(state.filter.genre)) &&
+                normalized(movie.title).includes(
+                    normalized(state.filter.title.trim()),
+                ),
+        )
+        .sort((a, b) => {
+            if (sort === 'title')
+                return a.title.localeCompare(b.title, 'pt-BR');
+            if (sort === 'release')
+                return (
+                    (Date.parse(String(b.premiereDate?.localDate)) || 0) -
+                    (Date.parse(String(a.premiereDate?.localDate)) || 0)
+                );
+            return (
+                (parseFloat(b.imdbRating || '') || 0) -
+                (parseFloat(a.imdbRating || '') || 0)
+            );
+        });
+    const visibleMovies = movies.slice(0, state.cardsToShow + state.cardFirst);
+
+    function closeDetails() {
+        request.current?.abort();
+        setOpen(false);
     }
 
-    async function handleMovieCardSelector(
-        e: any,
-        movie: { title: string; originalTitle: string; trailers: any }
-    ) {
-        const movieTitle = movie.title.trim();
-        const originalMovie = movie.originalTitle.trim();
-        const trailer = movie.trailers;
-
-        const omdbRes = await fetch(`/api/rating?movieName=${originalMovie}`);
-        const omdbData = await omdbRes.json();
-
-        const res = await fetch(
-            `/api/movie?movie=${movieTitle}&cityId${state.cityId}`
-        );
-        const movieRes = await res.json();
-        const sessiosRes = await fetch(
-            `/api/session?movieId=${movieRes}&cityId${state.cityId}`
-        );
-        const sessionsData = await sessiosRes.json();
-        let sessionTable: {
-            name: any;
-            times: any[];
-            distance?: number;
-            neighborhood: any;
-            price: any;
-        }[] = [];
-        sessionsData[0]?.theaters?.map(
-            (theater: {
-                name: any;
-                rooms: { sessions: { price: any }[] }[];
-                geolocation: { lat: any; lng: any };
-                neighborhood: any;
-            }) => {
-                sessionTable.push({
-                    name: theater.name,
-                    times: concatenateSessionTimes(theater.rooms),
-                    distance: theater.geolocation.lat
-                        ? distanceCalculator(
-                              state.currentGeographicPosition.latitude,
-                              state.currentGeographicPosition.longitude,
-                              theater.geolocation.lat,
-                              theater.geolocation.lng,
-                              'K'
-                          )
-                        : undefined,
-                    neighborhood: theater.neighborhood,
-                    price: theater.rooms[0].sessions[0].price,
-                });
-                return null;
-            }
-        );
-        setState((prevState) => ({
-            ...prevState,
-            movie: movieTitle,
-            originalMovie: originalMovie,
-            trailer: trailer,
-            movieId: movieRes,
-            movieInfo: omdbData,
-            sessionsInfo: sessionsData,
-            sessionInfoIsReady: true,
-            sessionTable: sessionTable,
+    async function selectMovie(movie: RatedMovie) {
+        request.current?.abort();
+        const controller = new AbortController();
+        request.current = controller;
+        setOpen(true);
+        setDetailsLoading(true);
+        setSessionError(false);
+        setState((previous) => ({
+            ...previous,
+            selectedMovie: movie,
+            movie: movie.title,
+            originalMovie: movie.originalTitle || movie.title,
+            movieId: movie.id,
+            movieInfo: {},
+            trailer: movie.trailers || [],
+            sessionTable: [],
+            sessionsInfo: [],
+            sessionInfoIsReady: false,
         }));
+
+        async function read(url: string) {
+            const response = await fetch(url, {
+                signal: AbortSignal.any([
+                    controller.signal,
+                    AbortSignal.timeout(15000),
+                ]),
+            });
+            if (!response.ok) throw new Error('Dados indisponíveis');
+            return response.json();
+        }
+
+        const [rating, sessions] = await Promise.allSettled([
+            read(
+                `/api/rating?${new URLSearchParams({ movieName: movie.originalTitle || movie.title })}`,
+            ),
+            read(
+                `/api/session?${new URLSearchParams({ movieId: movie.id, cityId: state.cityId })}`,
+            ).then((data) => {
+                if (!Array.isArray(data))
+                    throw new Error('Sessões indisponíveis');
+                return data;
+            }),
+        ]);
+        if (controller.signal.aborted) return;
+        const sessionData =
+            sessions.status === 'fulfilled' ? sessions.value : [];
+        const { latitude, longitude } = state.currentGeographicPosition;
+        const sessionTable: SessionRow[] = (sessionData[0]?.theaters || []).map(
+            (theater: any) => {
+                const theaterSessions = (theater.rooms || []).flatMap(
+                    (room: any) => room.sessions || [],
+                );
+                const times = Array.from(
+                    new Set<string>(
+                        theaterSessions
+                            .map((session: any) => session.date?.hour)
+                            .filter(Boolean),
+                    ),
+                ).sort();
+                const prices = theaterSessions
+                    .map((session: any) => Number(session.price))
+                    .filter(
+                        (price: number) => Number.isFinite(price) && price > 0,
+                    );
+                return {
+                    name: theater.name,
+                    times,
+                    neighborhood: theater.neighborhood || '',
+                    price: prices.length ? Math.min(...prices) : undefined,
+                    distance:
+                        Number.isFinite(latitude) &&
+                        Number.isFinite(longitude) &&
+                        theater.geolocation?.lat != null &&
+                        theater.geolocation?.lng != null
+                            ? distanceCalculator(
+                                  latitude,
+                                  longitude,
+                                  Number(theater.geolocation.lat),
+                                  Number(theater.geolocation.lng),
+                                  'K',
+                              )
+                            : undefined,
+                };
+            },
+        );
+        setState((previous) => ({
+            ...previous,
+            movieInfo:
+                rating.status === 'fulfilled' &&
+                rating.value?.Response !== 'False'
+                    ? rating.value || {}
+                    : {},
+            sessionsInfo: sessionData,
+            sessionTable,
+            sessionInfoIsReady: true,
+        }));
+        setSessionError(sessions.status === 'rejected');
+        setDetailsLoading(false);
     }
 
     return (
-        <Grid item xs={12} style={{ margin: '1%' }}>
-            <Paper style={{ padding: '1%' }}>
-                {loadError ? (
-                    <div>
-                        <Alert severity="warning">{loadError}</Alert>
-                        <form
-                            onSubmit={(event) => {
-                                event.preventDefault();
-                                if (city.trim()) {
-                                    onCitySubmit(
-                                        city.trim(),
-                                        region.trim().toUpperCase()
-                                    );
-                                }
-                            }}
+        <>
+            {loadError ? (
+                <div className="catalog-message error-state" role="alert">
+                    <span className="empty-icon">
+                        <PlaceOutlined />
+                    </span>
+                    <h3>Vamos encontrar outro caminho?</h3>
+                    <p>{loadError}</p>
+                    <div className="message-actions">
+                        <button
+                            className="button button-primary"
+                            onClick={onLocationClick}
                         >
-                            <Grid
-                                container
-                                spacing={2}
-                                alignItems="center"
-                                style={{ marginTop: '1%' }}
-                            >
-                                <Grid item xs={12} sm={6}>
-                                    <TextField
-                                        label="Cidade"
-                                        value={city}
-                                        onChange={(event) =>
-                                            setCity(event.target.value)
-                                        }
-                                        autoComplete="address-level2"
-                                        required
-                                        fullWidth
-                                    />
-                                </Grid>
-                                <Grid item xs={4} sm={2}>
-                                    <TextField
-                                        label="UF"
-                                        value={region}
-                                        onChange={(event) =>
-                                            setRegion(
-                                                event.target.value.toUpperCase()
-                                            )
-                                        }
-                                        inputProps={{
-                                            maxLength: 2,
-                                            pattern: '[A-Za-z]{2}',
-                                        }}
-                                        required
-                                        fullWidth
-                                    />
-                                </Grid>
-                                <Grid item xs={8} sm={4}>
-                                    <Button type="submit" variant="contained">
-                                        Buscar filmes
-                                    </Button>
-                                </Grid>
-                            </Grid>
-                        </form>
-                        <Button onClick={onRetry} style={{ marginTop: '1%' }}>
-                            Usar minha localização
-                        </Button>
+                            Escolher cidade <ArrowForwardRounded />
+                        </button>
+                        <button className="text-button" onClick={onRetry}>
+                            Tentar novamente
+                        </button>
                     </div>
-                ) : state.movieCardsAreReady ? (
-                    <div>
-                        <Typography variant="h6">
-                            {state.availableMovies.length
-                                ? 'Selecione um Filme em Cartaz:'
-                                : 'Nenhum filme em cartaz para esta cidade.'}
-                        </Typography>
-                        <Grid
-                            container
-                            justifyContent="space-between"
-                            alignItems="center"
-                        >
-                            {state.availableMovies.length
-                                ? state.availableMovies
-                                      .filter((movie) => {
-                                          if (state.filter.genre !== '') {
-                                              return movie.genres.includes(
-                                                  state.filter.genre
-                                              );
-                                          }
-                                          return true;
-                                      })
-                                      .filter((movie) => {
-                                          if (state.filter.title !== '') {
-                                              return movie.title
-                                                  .toLowerCase()
-                                                  .includes(
-                                                      state.filter.title.toLowerCase()
-                                                  );
-                                          }
-                                          return true;
-                                      })
-                                      .map((movie, index) => {
-                                          if (
-                                              index >= state.cardFirst &&
-                                              index <
-                                                  state.cardFirst +
-                                                      state.cardsToShow
-                                          ) {
-                                              return (
-                                                  <Grid
-                                                      key={movie.title}
-                                                      item
-                                                      xs={2}
-                                                      style={{
-                                                          margin: '1%',
-                                                      }}
-                                                  >
-                                                      <Grid
-                                                          container
-                                                          alignItems="center"
-                                                          justifyContent="center"
-                                                      >
-                                                          <Button
-                                                              border={1}
-                                                              onClick={(
-                                                                  e: MouseEvent<
-                                                                      HTMLButtonElement,
-                                                                      MouseEvent
-                                                                  >
-                                                              ) =>
-                                                                  handleMovieCardSelector(
-                                                                      e,
-                                                                      movie
-                                                                  )
-                                                              }
-                                                          >
-                                                              <img
-                                                                  alt=""
-                                                                  style={{
-                                                                      margin: '1%',
-                                                                      width: '80%',
-                                                                      height: '80%',
-                                                                  }}
-                                                                  src={
-                                                                      movie
-                                                                          ?.images[0]
-                                                                          ?.url
-                                                                  }
-                                                              />
-                                                          </Button>
-                                                          <Typography
-                                                              noWrap={true}
-                                                              style={{
-                                                                  width: '100%',
-                                                              }}
-                                                              display="block"
-                                                              align="center"
-                                                              variant="caption"
-                                                          >
-                                                              {movie.title}
-                                                          </Typography>
-                                                          {movie.imdbRating ? (
-                                                              <Typography
-                                                                  display="block"
-                                                                  align="center"
-                                                                  variant="caption"
-                                                              >
-                                                                  <StarIcon
-                                                                      style={{
-                                                                          fontSize:
-                                                                              '12px',
-                                                                      }}
-                                                                      color="secondary"
-                                                                  />
-
-                                                                  {
-                                                                      movie.imdbRating
-                                                                  }
-                                                              </Typography>
-                                                          ) : null}
-                                                      </Grid>
-                                                  </Grid>
-                                              );
-                                          }
-                                          return null;
-                                      })
-                                : null}
-                        </Grid>
-                        <Grid container justifyContent="center">
-                            <Grid item xs={6} style={{ margin: '1%' }}>
-                                <Slider
-                                    value={state.cardFirst}
-                                    defaultValue={0}
-                                    aria-labelledby="discrete-slider"
-                                    valueLabelDisplay="auto"
-                                    step={1}
-                                    onChange={({}, value: number) =>
-                                        setState((prevState) => ({
-                                            ...prevState,
-                                            cardFirst: value,
-                                        }))
-                                    }
-                                    min={0}
-                                    max={
-                                        state.cardTotal - state.cardsToShow >= 0
-                                            ? state.cardTotal -
-                                              state.cardsToShow
-                                            : 0
-                                    }
+                </div>
+            ) : loading ? (
+                <div aria-busy="true" aria-label={loadingMessage}>
+                    <div className="loading-caption" role="status">
+                        <span className="live-dot" />
+                        {loadingMessage}
+                    </div>
+                    <div className="movie-grid">
+                        {Array.from({ length: 5 }, (_, index) => (
+                            <div className="movie-skeleton" key={index}>
+                                <Skeleton
+                                    variant="rounded"
+                                    className="poster-skeleton"
                                 />
-                            </Grid>
-                        </Grid>
+                                <Skeleton width="80%" height={30} />
+                                <Skeleton width="50%" height={22} />
+                            </div>
+                        ))}
                     </div>
-                ) : (
-                    <Grid container justifyContent="center">
-                        <Grid item xs={12}>
-                            <Typography
-                                style={{
-                                    textAlign: 'center',
-                                }}
-                                variant="h6"
+                </div>
+            ) : !state.movieCardsAreReady ? (
+                <div className="welcome-state">
+                    <div className="welcome-heading">
+                        <span className="empty-icon">
+                            <LocalMoviesOutlined />
+                        </span>
+                        <div>
+                            <h3>Seu próximo “que filme bom!” começa aqui.</h3>
+                            <p>
+                                Escolha sua cidade acima e deixe o resto com a
+                                gente.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="discovery-steps">
+                        <div>
+                            <span className="step-number">01</span>
+                            <div>
+                                <strong>Encontre seu filme</strong>
+                                <p>Explore o que está em cartaz.</p>
+                            </div>
+                        </div>
+                        <div>
+                            <span className="step-number">02</span>
+                            <div>
+                                <strong>Escolha sem dúvida</strong>
+                                <p>Confira notas, sinopses e trailers.</p>
+                            </div>
+                        </div>
+                        <div>
+                            <span className="step-number">03</span>
+                            <div>
+                                <strong>Partiu cinema</strong>
+                                <p>Descubra onde e quando assistir.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ) : movies.length === 0 ? (
+                <div className="catalog-message" role="status">
+                    <span className="empty-icon">
+                        <SearchOffRounded />
+                    </span>
+                    <h3>
+                        {state.availableMovies.length
+                            ? 'Esse filme ainda não apareceu por aqui.'
+                            : 'Nenhum filme em cartaz por aqui.'}
+                    </h3>
+                    <p>
+                        {state.availableMovies.length
+                            ? 'Experimente outro título ou explore todos os gêneros.'
+                            : 'Tente uma cidade próxima para descobrir outras sessões.'}
+                    </p>
+                    <button
+                        className="button button-primary"
+                        onClick={
+                            state.availableMovies.length
+                                ? () =>
+                                      setState((previous) => ({
+                                          ...previous,
+                                          filter: { title: '', genre: '' },
+                                          cardFirst: 0,
+                                      }))
+                                : onLocationClick
+                        }
+                    >
+                        {state.availableMovies.length
+                            ? 'Limpar filtros'
+                            : 'Escolher outra cidade'}{' '}
+                        <ArrowForwardRounded />
+                    </button>
+                </div>
+            ) : (
+                <>
+                    <p className="results-caption" role="status">
+                        {movies.length}{' '}
+                        {movies.length === 1
+                            ? 'filme para descobrir'
+                            : 'filmes para descobrir'}
+                        <span>Escolha um pôster e encontre sua sessão.</span>
+                    </p>
+                    <div className="movie-grid">
+                        {visibleMovies.map((movie) => (
+                            <button
+                                className="movie-card"
+                                key={movie.id}
+                                onClick={() => selectMovie(movie)}
+                                aria-label={`Ver detalhes e sessões de ${movie.title}`}
                             >
-                                {' '}
-                                {loadingMessage}
-                            </Typography>
-                        </Grid>
-                        <Grid
-                            item
-                            style={{
-                                textAlign: 'center',
-                            }}
-                            xs={12}
-                        >
-                            <CircularProgress></CircularProgress>
-                        </Grid>
-                    </Grid>
+                                <div className="poster-wrap">
+                                    <span className="poster-fallback">
+                                        <LocalMoviesOutlined />
+                                        <span>{movie.title}</span>
+                                    </span>
+                                    {movie.images?.[0]?.url && (
+                                        <img
+                                            className="movie-poster"
+                                            src={movie.images[0].url}
+                                            alt={`Pôster de ${movie.title}`}
+                                            {...{ loading: 'lazy' }}
+                                            onError={(event) => {
+                                                event.currentTarget.style.display =
+                                                    'none';
+                                            }}
+                                        />
+                                    )}
+                                    {parseFloat(movie.imdbRating || '') > 0 && (
+                                        <span className="rating-badge">
+                                            <StarRounded />
+                                            {movie.imdbRating}
+                                            <small>IMDb</small>
+                                        </span>
+                                    )}
+                                    {movie.inPreSale && (
+                                        <span className="presale-badge">
+                                            Pré-venda
+                                        </span>
+                                    )}
+                                    <span className="poster-action">
+                                        Ver sessões <ArrowForwardRounded />
+                                    </span>
+                                </div>
+                                <div className="movie-card-copy">
+                                    <h3>{movie.title}</h3>
+                                    <p>
+                                        {movie.genres
+                                            ?.slice(0, 2)
+                                            .join(' · ') || 'Cinema'}
+                                        {Number(movie.duration) > 0 && (
+                                            <>
+                                                <span className="metadata-dot">
+                                                    {' '}
+                                                    ·{' '}
+                                                </span>
+                                                {movie.duration} min
+                                            </>
+                                        )}
+                                    </p>
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                    <div className="catalog-bottom">
+                        <span>
+                            Mostrando {visibleMovies.length} de {movies.length}{' '}
+                            filmes
+                        </span>
+                        {visibleMovies.length < movies.length && (
+                            <button
+                                className="button button-outline"
+                                onClick={() =>
+                                    setState((previous) => ({
+                                        ...previous,
+                                        cardFirst:
+                                            previous.cardFirst +
+                                            previous.cardsToShow,
+                                    }))
+                                }
+                            >
+                                Mais filmes <ArrowForwardRounded />
+                            </button>
+                        )}
+                        <span>
+                            <StarRounded /> Avaliações do IMDb
+                        </span>
+                    </div>
+                </>
+            )}
+            <Dialog
+                open={open}
+                onClose={closeDetails}
+                maxWidth="lg"
+                fullWidth
+                aria-labelledby="movie-detail-title"
+                className="movie-dialog"
+            >
+                <div className="dialog-topbar">
+                    <span>
+                        <ConfirmationNumberOutlined /> SUA PRÓXIMA SESSÃO
+                    </span>
+                    <IconButton
+                        onClick={closeDetails}
+                        aria-label="Fechar detalhes"
+                    >
+                        <CloseRounded />
+                    </IconButton>
+                </div>
+                {state.selectedMovie && (
+                    <>
+                        <MovieInfo state={state} />
+                        <div className="dialog-sessions">
+                            {detailsLoading ? (
+                                <div className="session-loading" role="status">
+                                    <Skeleton height={36} width="45%" />
+                                    <Skeleton height={70} />
+                                    <Skeleton height={70} />
+                                    <span>
+                                        Buscando sessões e avaliações...
+                                    </span>
+                                </div>
+                            ) : sessionError ? (
+                                <Alert
+                                    severity="warning"
+                                    action={
+                                        <Button
+                                            color="inherit"
+                                            size="small"
+                                            onClick={() =>
+                                                selectMovie(
+                                                    state.selectedMovie!,
+                                                )
+                                            }
+                                        >
+                                            Tentar novamente
+                                        </Button>
+                                    }
+                                >
+                                    Não foi possível carregar os horários agora.
+                                </Alert>
+                            ) : (
+                                <SessionInfo
+                                    state={state}
+                                    setState={setState}
+                                />
+                            )}
+                        </div>
+                    </>
                 )}
-            </Paper>
-        </Grid>
+            </Dialog>
+        </>
     );
-};
-
-export default MovieCards;
+}
