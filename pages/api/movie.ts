@@ -1,15 +1,8 @@
-import movieIdRequest from '../../src/requests/movieIdRequester';
+import { getHandler, queryString } from '../../src/server/api';
+import { findMovieId } from '../../src/server/ingresso/client';
 
-export default async function handler(
-    req: { query: { movie: string; cityId: string | undefined } },
-    res: {
-        status: (arg0: number) => {
-            (): any;
-            new (): any;
-            json: { (arg0: any): void; new (): any };
-        };
-    }
-) {
-    const response = await movieIdRequest(req.query.movie, req.query.cityId);
-    res.status(200).json(response);
-}
+export default getHandler(
+    (query) =>
+        findMovieId(queryString(query.movie), queryString(query.cityId, '1')),
+    'Não foi possível consultar o filme. Tente novamente.',
+);

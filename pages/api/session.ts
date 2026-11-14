@@ -1,15 +1,8 @@
-import sessionRequest from '../../src/requests/sessionsRequester';
+import { getHandler, queryString } from '../../src/server/api';
+import { getSessions } from '../../src/server/ingresso/client';
 
-export default async function handler(
-    req: { query: { movieId: string; cityId: string | undefined } },
-    res: {
-        status: (arg0: number) => {
-            (): any;
-            new (): any;
-            json: { (arg0: any): void; new (): any };
-        };
-    }
-) {
-    const response = await sessionRequest(req.query.movieId, req.query.cityId);
-    res.status(200).json(response);
-}
+export default getHandler(
+    (query) =>
+        getSessions(queryString(query.movieId), queryString(query.cityId, '1')),
+    'Não foi possível carregar as sessões. Tente novamente.',
+);

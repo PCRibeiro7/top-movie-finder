@@ -12,14 +12,14 @@ require.extensions['.ts'] = (module, filename) => {
     module._compile(outputText, filename);
 };
 
-const { getMovieRating } = require('../src/requests/ratingRequester.ts');
-const { default: omdbRequest } = require('../src/requests/omdbRequester.ts');
+const { getMovieRating } = require('../src/features/ratings/client.ts');
+const { default: omdbRequest } = require('../src/server/ratings/omdb.ts');
 const { default: handler } = require('../pages/api/rating.ts');
 const {
     RATING_BATCH_SIZE,
     RATING_CACHE_TTL,
     RATING_MISS_CACHE_TTL,
-} = require('../src/utils/movieRatings.ts');
+} = require('../src/shared/ratings.ts');
 
 test('client batches unique titles serially and shares cached and in-flight ratings', async (t) => {
     const batches = [];
@@ -67,7 +67,7 @@ test('client expires cached results and retries partial failures without refetch
                     : name === 'Client unrated'
                       ? { Response: 'True', imdbRating: 'N/A' }
                       : name === 'Client retry' && batches.length === 1
-                        ? null
+                        ? { error: 'Malformed provider result' }
                         : { Response: 'True', imdbRating: '7.5' },
             ])),
         });

@@ -1,0 +1,214 @@
+.location-ticket {
+    position: relative;
+    background: #f0eedf;
+    color: #1b251e;
+    padding: 26px 30px 22px;
+    border-radius: 4px;
+    box-shadow: 7px 7px 0 #273023;
+    transform: rotate(1.5deg);
+}
+.location-ticket > * {
+    position: relative;
+}
+.ticket-topline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1.8px;
+    padding-bottom: 17px;
+    border-bottom: 1px solid #cbd0bc;
+}
+.ticket-topline svg {
+    width: 18px;
+    height: 18px;
+}
+.location-ticket h2 {
+    font-family: var(--display);
+    font-size: 23px;
+    font-weight: 800;
+    line-height: 1.35;
+    letter-spacing: -0.8px;
+    margin-top: 20px;
+}
+.location-ticket > p {
+    font-size: 12px;
+    color: #5c665b;
+    margin-top: 11px;
+    line-height: 1.6;
+}
+.location-form {
+    margin-top: 20px;
+}
+.location-fields {
+    display: flex;
+    gap: 12px;
+}
+.location-fields label {
+    display: flex;
+    flex-direction: column;
+    font-size: 12px;
+    font-weight: 700;
+    gap: 7px;
+}
+.city-field {
+    flex: 1;
+    min-width: 0;
+}
+.region-field {
+    width: 78px;
+}
+.location-fields input,
+.location-fields select {
+    width: 100%;
+    height: 43px;
+    border: 1px solid #c3c9b9;
+    border-radius: 6px;
+    background: #f7f6ee;
+    color: #283128;
+    font-size: 13px;
+    padding: 0 12px;
+    color-scheme: light;
+}
+.location-fields input::placeholder {
+    color: #7e8578;
+    opacity: 1;
+}
+.location-fields input:focus,
+.location-fields select:focus {
+    outline: 2px solid #58704c;
+    outline-offset: 2px;
+}
+.button-dark {
+    background: #263122;
+    color: #f4f3e9;
+    width: 100%;
+    margin-top: 14px;
+}
+.button-dark:hover {
+    background: #3e5036;
+}
+.ticket-perforation {
+    height: 30px;
+    margin: 10px -30px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.ticket-perforation::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    border-top: 1px dashed #adb69f;
+}
+.ticket-perforation::after {
+    content: '';
+    position: absolute;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: var(--bg);
+    left: -8px;
+    top: calc(50% - 7px);
+    box-shadow: 420px 0 0 var(--bg);
+}
+.ticket-perforation span {
+    z-index: 1;
+    background: #f0eedf;
+    color: #727b68;
+    font-size: 12px;
+    padding-inline: 10px;
+}
+.geolocation-button {
+    border: 0;
+    background: transparent;
+    color: #37472e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 37px;
+    width: 100%;
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 5px;
+}
+.geolocation-button svg {
+    height: 15px;
+    width: 15px;
+}
+.geolocation-button:hover {
+    background: #e4e7d6;
+}
+@media (max-width: 1100px) {
+    .location-ticket {
+        padding-inline: 25px;
+    }
+    .ticket-perforation {
+        margin-inline: -25px;
+    }
+    .ticket-perforation::after {
+        box-shadow: 370px 0 0 var(--bg);
+    }
+}
+@media (max-width: 800px) {
+    .location-ticket {
+        padding-inline: 22px;
+    }
+    .ticket-perforation {
+        margin-inline: -22px;
+    }
+    .ticket-perforation::after {
+        box-shadow: 330px 0 0 var(--bg);
+    }
+    .location-ticket h2 {
+        font-size: 21px;
+    }
+    .location-ticket > p {
+        font-size: 12px;
+    }
+}
+@media (max-width: 650px) {
+    .location-ticket {
+        width: calc(100% - 8px);
+        max-width: 450px;
+        justify-self: center;
+        padding: 22px 24px 19px;
+        transform: rotate(1deg);
+    }
+    .location-ticket h2 {
+        font-size: 24px;
+    }
+    .location-ticket > p {
+        font-size: 12px;
+    }
+    .ticket-topline {
+        padding-bottom: 14px;
+    }
+    .ticket-perforation {
+        margin-inline: -24px;
+    }
+    .ticket-perforation::after {
+        box-shadow: none;
+    }
+    .ticket-perforation {
+        background: radial-gradient(
+            circle at 100% 50%,
+            var(--bg) 7px,
+            transparent 8px
+        );
+    }
+    .location-fields input,
+    .location-fields select {
+        font-size: 16px;
+    }
+    .location-fields label {
+        font-size: 12px;
+    }
+    .geolocation-button {
+        font-size: 13px;
+    }
+}

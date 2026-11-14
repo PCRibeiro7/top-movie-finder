@@ -1,0 +1,121 @@
+.site-header {
+    border-bottom: 1px solid var(--border);
+}
+.header-inner {
+    min-height: 95px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+}
+.brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    font: 800 26px var(--display);
+    letter-spacing: -1.3px;
+    white-space: nowrap;
+}
+.brand-symbol {
+    display: grid;
+    place-items: center;
+    background: var(--accent);
+    width: 41px;
+    height: 41px;
+    color: #1b221b;
+    border-radius: 11px;
+    transform: rotate(-9deg);
+}
+.brand-symbol svg {
+    width: 27px;
+    height: 27px;
+}
+.brand-question {
+    color: var(--accent);
+    margin-left: 1px;
+}
+.header-nav {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    font-size: 13px;
+    font-weight: 500;
+}
+.header-nav > a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.header-nav > a svg {
+    width: 16px;
+    height: 16px;
+    color: var(--muted);
+}
+.header-nav > a:hover,
+.location-nav:hover {
+    color: var(--accent);
+}
+.header-divider {
+    width: 1px;
+    height: 22px;
+    background: var(--border);
+}
+.location-nav {
+    background: none;
+    border: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 0;
+}
+.location-nav svg {
+    width: 18px;
+    height: 18px;
+    color: var(--accent);
+}
+@media (max-width: 650px) {
+    .header-inner {
+        min-height: 77px;
+        gap: 12px;
+    }
+    .brand {
+        font-size: 21px;
+        gap: 9px;
+        letter-spacing: -1px;
+    }
+    .brand-symbol {
+        width: 33px;
+        height: 33px;
+        border-radius: 8px;
+    }
+    .brand-symbol svg {
+        width: 22px;
+        height: 22px;
+    }
+    .header-nav {
+        gap: 0;
+    }
+    .header-nav > a,
+    .header-divider {
+        display: none;
+    }
+    .location-nav {
+        font-size: 12px;
+        gap: 4px;
+        max-width: 145px;
+        text-align: right;
+    }
+    .location-nav svg {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+    }
+}
+@media (max-width: 360px) {
+    .location-nav span {
+        display: none;
+    }
+    .location-nav {
+        padding: 10px;
+    }
+}

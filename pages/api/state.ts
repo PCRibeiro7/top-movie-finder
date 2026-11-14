@@ -1,33 +1,14 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import cityIdRequest from '../../src/requests/cityIdRequester';
+import { ApiError, getHandler, queryString } from '../../src/server/api';
+import { findCityId } from '../../src/server/ingresso/client';
 
-export default async function handler(
-    req: NextApiRequest,
-    res: NextApiResponse
-) {
-    const { state, city } = req.query;
-    if (
-        typeof state !== 'string' ||
-        !/^[A-Za-z]{2}$/.test(state.trim()) ||
-        typeof city !== 'string' ||
-        !city.trim()
-    ) {
-        res.status(400).json({ error: 'Informe uma cidade e uma UF válidas.' });
-        return;
+export default getHandler(async (query) => {
+    const state = queryString(query.state);
+    const city = queryString(query.city);
+    if (!/^[A-Za-z]{2}$/.test(state)) {
+        throw new ApiError(400, 'Informe uma cidade e uma UF válidas.');
     }
-
-    try {
-        const cityId = await cityIdRequest(state, city);
-        if (!cityId) {
-            res.status(404).json({
-                error: 'Não encontramos cinemas nesta cidade.',
-            });
-            return;
-        }
-        res.status(200).json(cityId);
-    } catch {
-        res.status(502).json({
-            error: 'Não foi possível consultar as cidades. Tente novamente.',
-        });
-    }
-}
+    const cityId = await findCityId(state, city);
+    if (!cityId)
+        throw new ApiError(404, 'Não encontramos cinemas nesta cidade.');
+    return cityId;
+}, 'Não foi possível consultar as cidades. Tente novamente.');

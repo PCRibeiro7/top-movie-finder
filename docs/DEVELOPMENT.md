@@ -6,7 +6,7 @@ See the [README](../README.md) for a quick start and the [architecture guide](AR
 
 1. Install Node.js 24 LTS and npm. The declared npm version is `11.19.1`; check your environment with `node --version` and `npm --version`.
 2. Run `npm ci` from the repository root. Use the committed `package-lock.json`; keep dependency changes intentional.
-3. Create the ignored root `.env` with the following placeholders replaced by your own values:
+3. Copy `.env.example` to the ignored root `.env` and replace its placeholders with your own values:
 
    ```dotenv
    OMDB_API_KEY=your_omdb_key
@@ -20,7 +20,7 @@ See the [README](../README.md) for a quick start and the [architecture guide](AR
 | `OMDB_API_KEY` | Server-side OMDb requester | Needed to retrieve IMDb scores; listings use Ingresso.com independently |
 | `TMDB_API_KEY` | Server-side title resolver | Optional fallback for missing or unscored title lookups; accepts a v3 key or an `eyJ`-prefixed API Read Access Token |
 
-Do not prefix these names with `NEXT_PUBLIC_`. Keep actual values out of source, fixtures, and logs. `.env` is ignored; `.env.local` is not currently ignored. The app has no database setup or migration step.
+Do not prefix these names with `NEXT_PUBLIC_`. Keep actual values out of source, fixtures, and logs. `.env*` files are ignored except the placeholder-only `.env.example`. The app has no database setup or migration step.
 
 The repository's [.npmrc](../.npmrc) enables `legacy-peer-deps` to accommodate the existing dependency graph. It also applies Node's `--use-system-ca` to npm scripts so provider HTTPS requests use operating-system trust. Keep these settings when reproducing local behavior.
 
@@ -29,12 +29,12 @@ The repository's [.npmrc](../.npmrc) enables `legacy-peer-deps` to accommodate t
 ```sh
 npm test
 npm run lint
-npx --no-install tsc --noEmit --incremental false
+npm run typecheck
 ```
 
-The compiler command uses the installed TypeScript dependency without fetching another version or writing an incremental build cache. There is no separate `typecheck` npm script.
+The typecheck script runs the installed compiler with `--noEmit --incremental false`, without fetching another version or writing an incremental build cache.
 
-`npm run lint` currently passes with a Next.js notice that `next lint` is deprecated. Treat a future migration to the ESLint CLI as a tooling change; the current script remains the project command.
+`npm run lint` uses the ESLint CLI and `eslint.config.cjs`. The configuration preserves the Next/Core Web Vitals and Prettier rules and prevents browser features and shared contracts from importing server or route modules.
 
 For runtime or configuration changes, check the production build and run it locally:
 
@@ -49,7 +49,7 @@ npm start
 
 [tests/ratings.test.cjs](../tests/ratings.test.cjs) uses `node:test`, `node:assert/strict`, `t.mock.method`, and a small require hook that transpiles application `.ts` files with the installed TypeScript compiler. Transpilation in the test harness does not perform type checking.
 
-Provider fetches are mocked, so the rating suite needs no live provider keys. It covers browser batching and deduplication, client/server cache expiry, server concurrency, title cleanup, TMDB disambiguation, partial provider failures, and rating API validation. It does not currently cover UI, geolocation, city lookup, or session rendering.
+Provider fetches are mocked, so the suite needs no live provider keys. Rating coverage protects batching, deduplication, cache expiry, server concurrency, title cleanup, TMDB disambiguation, partial failures, and validation. `tests/api.test.cjs` covers Ingresso.com contracts, city matching, defaults, and provider failures. `tests/catalog.test.cjs` covers filtering/sorting, metadata fallbacks, and session aggregation. Browser lifecycle, geolocation, focus, and responsive presentation are checked manually below.
 
 Read the surrounding tests before making changes. Strengthen a related case when possible, preserve suite order and mock/assertion style, and add only the coverage needed for the changed behavior. Use existing `t.after` cleanup when modifying environment variables.
 
@@ -57,10 +57,10 @@ Read the surrounding tests before making changes. Strengthen a related case when
 
 Run the relevant checks for the behavior being changed. Live results depend on provider availability and current screenings.
 
-1. **City selection:** select a city/UF with cinemas, load its catalog, and reload to confirm the saved city is restored. Try an unknown city and check the recovery message. Browser storage uses `movie-finder-city`; remove that entry in browser developer tools to test the initial screen.
+1. **City selection:** select a city/UF with cinemas, load its catalog, and reload to confirm the saved city is restored without coordinates or automatic scrolling. Try an unknown city, retry the same input, and check recovery. The displayed/saved city changes only after catalog success, including an empty catalog. Storage failures must not block selection. Browser storage uses `movie-finder-city`; remove that entry in developer tools to test the initial screen.
 2. **Geolocation:** test permission allowed and denied. Manual city selection should remain usable after a failure. Cinema distances require coordinates and are absent for manual selection.
 3. **Catalog:** test title and genre filters, all sort options, an empty result, clearing filters, and loading more cards. The catalog should appear before rating enrichment finishes.
-4. **Movie details:** open a film, inspect its summary, trailer when present, and session rows. Close the dialog or switch films while requests are pending; stale responses should not replace the current selection.
+4. **Movie details:** open a film, inspect its summary, trailer when present, and session rows. Sessions should appear independently of rating completion. Close the dialog, switch films, retry, or change cities while requests are pending; stale responses must not replace the current selection. Session-table sorting persists across selections.
 5. **Partial failures:** check that a failed rating lookup does not discard sessions, and a session failure does not hide movie details. Distinguish an unrated film from a missing title or temporarily unavailable provider.
 6. **Accessibility and layout:** use the keyboard for city selection, filters, cards, and dialog close. Check narrow and wide screens, visible focus, the skip link, Portuguese accents, and reduced-motion behavior for result scrolling.
 
@@ -77,6 +77,6 @@ Run the relevant checks for the behavior being changed. Live results depend on p
 
 Rating caches live in browser-module and server-process memory. They are neither persistent storage nor shared between server instances; a page reload resets the browser cache, and restarting the server resets its cache.
 
-Avoid importing [the unfinished Netlify function](../netlify/functions/sync-movies/sync-movies.ts) during routine development. Its top-level handler invocation sends provider requests, and its computed ratings are not saved. It is separate from the active Next.js request flow. See the architecture guide before reusing legacy helpers.
+The active app has no Redux store, service worker, or Netlify function. Keep browser features independent of `src/server/`; access providers through the API routes. See the architecture guide for feature ownership and import boundaries.
 
 When changing a command, environment variable, endpoint, or rating rule, update the corresponding docs and describe the checks performed in the change summary.

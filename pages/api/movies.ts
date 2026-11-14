@@ -1,15 +1,7 @@
-import availableMoviesRequest from '../../src/requests/availableMoviesRequester';
+import { getHandler, queryString } from '../../src/server/api';
+import { getMovies } from '../../src/server/ingresso/client';
 
-export default async function handler(
-    req: { query: { cityId: string | undefined } },
-    res: {
-        status: (arg0: number) => {
-            (): any;
-            new (): any;
-            json: { (arg0: any): void; new (): any };
-        };
-    }
-) {
-    const response = await availableMoviesRequest(req.query.cityId);
-    res.status(200).json(response);
-}
+export default getHandler(
+    (query) => getMovies(queryString(query.cityId, '1')),
+    'Não foi possível carregar os filmes. Tente novamente.',
+);
