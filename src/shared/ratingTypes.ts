@@ -1,7 +1,17 @@
+export type MovieRatingLookup = {
+    title: string;
+    originalTitle?: string;
+    releaseYear?: number;
+    director?: string;
+    runtimeMinutes?: number;
+};
+
 export type OmdbMovieRating = {
     Response: 'True';
     imdbRating: string;
     Title?: string | null;
+    Year?: string | null;
+    Director?: string | null;
     imdbID?: string | null;
     Runtime?: string | null;
     Poster?: string | null;

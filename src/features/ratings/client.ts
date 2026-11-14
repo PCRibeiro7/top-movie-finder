@@ -1,7 +1,11 @@
-import type { MovieRatingResponse } from '../../shared/ratingTypes';
+import type {
+    MovieRatingLookup,
+    MovieRatingResponse,
+} from '../../shared/ratingTypes';
 import { isRecord } from '../../shared/validation';
 import {
     movieRatingKey,
+    normalizeRatingLookup,
     movieRatingResult,
     RATING_BATCH_SIZE,
     RATING_CACHE_LIMIT,
@@ -17,7 +21,8 @@ const cache = new Map<
 >();
 const inFlight = new Map<string, Promise<MovieRatingResponse>>();
 const pending: {
-    movieName: string;
+    movieName?: string;
+    movie: MovieRatingLookup;
     key: string;
     resolve: (rating: MovieRatingResponse) => void;
     reject: (error: Error) => void;
@@ -27,13 +32,16 @@ let flushing = false;
 async function flushRatings() {
     while (pending.length) {
         const batch = pending.splice(0, RATING_BATCH_SIZE);
+        const legacy = batch.every((entry) => entry.movieName !== undefined);
         try {
             const response = await fetch('/api/rating', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    movieNames: batch.map(({ movieName }) => movieName),
-                }),
+                body: JSON.stringify(
+                    legacy
+                        ? { movieNames: batch.map(({ movieName }) => movieName) }
+                        : { movies: batch.map(({ movie }) => movie) },
+                ),
                 signal: AbortSignal.timeout(RATING_BATCH_TIMEOUT),
             });
             if (!response.ok) throw new Error('Ratings unavailable');
@@ -41,7 +49,7 @@ async function flushRatings() {
             const ratings =
                 isRecord(data) && isRecord(data.ratings) ? data.ratings : {};
             for (const entry of batch) {
-                const rating = ratings?.[entry.movieName];
+                const rating = ratings[legacy ? entry.movieName! : entry.key];
                 inFlight.delete(entry.key);
                 if (!isMovieRatingResponse(rating)) {
                     entry.reject(new Error('Rating unavailable'));
@@ -72,7 +80,7 @@ async function flushRatings() {
 }
 
 export function getMovieRating(
-    movieName: string,
+    movieName: string | MovieRatingLookup,
 ): Promise<MovieRatingResponse> {
     const key = movieRatingKey(movieName);
     if (!key) {
@@ -90,7 +98,15 @@ export function getMovieRating(
     if (existing) return existing;
 
     const promise = new Promise<MovieRatingResponse>((resolve, reject) => {
-        pending.push({ movieName: movieName.trim(), key, resolve, reject });
+        pending.push({
+            ...(typeof movieName === 'string'
+                ? { movieName: movieName.trim() }
+                : {}),
+            movie: normalizeRatingLookup(movieName),
+            key,
+            resolve,
+            reject,
+        });
     });
     inFlight.set(key, promise);
     if (!flushing) {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CatalogLocation, CitySelection } from '../../shared/location';
 import type { RatedMovie } from '../../shared/movies';
-import { movieRatingKey } from '../../shared/ratings';
+import { movieRatingKey, movieRatingLookup } from '../../shared/ratings';
 import {
     readSavedCity,
     resolveLocation,
@@ -91,7 +91,7 @@ export function useMovieCatalog() {
                             ...movie,
                             ...ratings.get(
                                 movieRatingKey(
-                                    movie.originalTitle || movie.title,
+                                    movieRatingLookup(movie),
                                 ),
                             ),
                         })),

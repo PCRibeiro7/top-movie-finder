@@ -11,7 +11,7 @@
 - This is a Next.js 15 **Pages Router** app with React 18, MUI 6, and TypeScript application code. Use the existing `pages/` structure.
 - The interface targets Brazilian cinema audiences. Preserve Portuguese copy, Brazilian city/UF selection, BRL prices, and distances in kilometers.
 - `pages/index.tsx` composes feature hooks and owns filters, catalog sorting, pagination, and focus/scroll behavior. Keep workflow state in the feature hooks; there is no Redux store or service worker.
-- Ingresso.com provides listings and sessions. OMDb provides displayed IMDb scores. TMDB only resolves titles to IMDb IDs for the rating fallback.
+- Ingresso.com provides listings and sessions. OMDb provides displayed IMDb scores, with the official daily IMDb dataset as a personal/noncommercial fallback. TMDB only resolves titles to IMDb IDs; never display its scores as IMDb scores.
 
 ## Where to change things
 

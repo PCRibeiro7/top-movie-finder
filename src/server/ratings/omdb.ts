@@ -1,7 +1,14 @@
-import type { MovieRatingResponse } from '../../shared/ratingTypes';
+import type {
+    MovieRatingLookup,
+    MovieRatingResponse,
+} from '../../shared/ratingTypes';
+import { imdbRating } from './imdb';
+import { matchingMovieMetadata } from './identity';
 import { findMovieImdbId } from './tmdb';
+import { isRecord } from '../../shared/validation';
 import {
-    cleanMovieTitle,
+    normalizeRatingLookup,
+    movieTitleKey,
     movieRatingKey,
     movieRatingResult,
     RATING_CACHE_LIMIT,
@@ -33,13 +40,54 @@ async function omdbJson(
     });
     if (!response.ok) throw new Error('Rating provider unavailable');
     const rating: unknown = await response.json();
+    // OMDb also uses this response for valid IDs it has not indexed yet.
+    if (
+        'i' in lookup &&
+        isRecord(rating) &&
+        rating.Response === 'False' &&
+        rating.Error === 'Incorrect IMDb ID.'
+    ) {
+        return { Response: 'False', Error: 'Movie not found!' };
+    }
     if (!isMovieRatingResponse(rating)) {
         throw new Error('Rating provider unavailable');
     }
     return rating;
 }
 
-async function fetchRating(movieTitle: string): Promise<MovieRatingResponse> {
+function matchingRating(
+    rating: MovieRatingResponse,
+    lookup: MovieRatingLookup,
+    resolved = false,
+) {
+    if (rating.Response !== 'True') return false;
+    const metadata = matchingMovieMetadata(lookup, {
+        director: rating.Director,
+        runtimeMinutes: Number(rating.Runtime?.match(/^(\d+)\s*min$/)?.[1]),
+    });
+    if (metadata === false) return false;
+    const title = rating.Title;
+    if (
+        !resolved &&
+        title &&
+        ![lookup.title, lookup.originalTitle].some(
+            (candidate) => candidate && movieTitleKey(candidate) === movieTitleKey(title),
+        )
+    ) {
+        return false;
+    }
+    if (!resolved && lookup.releaseYear !== undefined && metadata !== true) {
+        const year = Number(rating.Year?.match(/^(\d{4})/)?.[1]);
+        if (year !== lookup.releaseYear && year !== lookup.releaseYear - 1) {
+            return false;
+        }
+    }
+    return true;
+}
+
+async function fetchRating(
+    movie: string | MovieRatingLookup,
+): Promise<MovieRatingResponse> {
     if (activeRequests >= RATING_MAX_CONCURRENT_REQUESTS) {
         await new Promise<void>((resolve) => waiting.push(resolve));
     } else {
@@ -48,17 +96,67 @@ async function fetchRating(movieTitle: string): Promise<MovieRatingResponse> {
     try {
         // All fallback steps share a deadline instead of extending each lookup.
         const signal = AbortSignal.timeout(RATING_PROVIDER_TIMEOUT);
-        const title = cleanMovieTitle(movieTitle);
+        const lookup = normalizeRatingLookup(movie);
+        const title = lookup.originalTitle || lookup.title;
         if (!title) return { Response: 'False', Error: 'Movie not found!' };
-        const rating = await omdbJson({ t: title }, signal);
-        if (
-            movieRatingResult(rating).ratingStatus !== 'rated' &&
-            process.env.TMDB_API_KEY
-        ) {
-            const imdbId = await findMovieImdbId(title, signal);
-            if (imdbId) return await omdbJson({ i: imdbId }, signal);
+        let rating = await omdbJson({ t: title }, signal);
+        const matching = matchingRating(rating, lookup);
+        if (matching && movieRatingResult(rating).ratingStatus === 'rated') {
+            return rating;
         }
-        return rating;
+        const resolvedId = process.env.TMDB_API_KEY?.trim()
+            ? await findMovieImdbId(lookup, signal)
+            : null;
+        const directId =
+            matching &&
+            rating.Response === 'True' &&
+            rating.Title &&
+            typeof rating.imdbID === 'string' &&
+            /^tt\d+$/.test(rating.imdbID)
+                ? rating.imdbID
+                : null;
+        const imdbId = resolvedId || directId;
+        if (!imdbId) {
+            return matching
+                ? rating
+                : { Response: 'False', Error: 'Movie not found!' };
+        }
+        if (
+            resolvedId &&
+            (rating.Response !== 'True' || rating.imdbID !== imdbId)
+        ) {
+            try {
+                rating = await omdbJson({ i: imdbId }, signal);
+            } catch (error) {
+                // A verified identity can still have a score in the daily data.
+                const score = await imdbRating(imdbId, signal);
+                if (score) {
+                    return { Response: 'True', imdbID: imdbId, imdbRating: score };
+                }
+                throw error;
+            }
+            if (
+                rating.Response === 'True' &&
+                rating.imdbID &&
+                rating.imdbID !== imdbId
+            ) {
+                throw new Error('Rating provider unavailable');
+            }
+        }
+        const metadata =
+            rating.Response === 'True' && matchingRating(rating, lookup, true)
+                ? rating
+                : undefined;
+        if (metadata && movieRatingResult(metadata).ratingStatus === 'rated') {
+            return { ...metadata, imdbID: imdbId };
+        }
+        const score = await imdbRating(imdbId, signal);
+        return {
+            ...metadata,
+            Response: 'True',
+            imdbID: imdbId,
+            imdbRating: score || 'N/A',
+        };
     } finally {
         // Transfer the slot to a waiter before admitting another request.
         const next = waiting.shift();
@@ -68,7 +166,7 @@ async function fetchRating(movieTitle: string): Promise<MovieRatingResponse> {
 }
 
 export default function omdbRequest(
-    movieTitle: string,
+    movieTitle: string | MovieRatingLookup,
 ): Promise<MovieRatingResponse> {
     const key = movieRatingKey(movieTitle);
     const cached = cache.get(key);

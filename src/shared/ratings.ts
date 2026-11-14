@@ -1,4 +1,5 @@
-import type { MovieRatingResponse } from './ratingTypes';
+import type { Movie } from './movies';
+import type { MovieRatingLookup, MovieRatingResponse } from './ratingTypes';
 import { isRecord } from './validation';
 
 export const RATING_BATCH_SIZE = 10;
@@ -8,6 +9,7 @@ export const RATING_CACHE_LIMIT = 500;
 export const RATING_MAX_CONCURRENT_REQUESTS = 4;
 export const RATING_PROVIDER_TIMEOUT = 5000;
 export const RATING_BATCH_TIMEOUT = 20000;
+export const IMDB_DATASET_CACHE_TTL = 24 * 60 * 60 * 1000;
 
 export type MovieRatingStatus =
     | 'rated'
@@ -25,6 +27,8 @@ export function isMovieRatingResponse(
         typeof value.imdbRating === 'string' &&
         [
             'Title',
+            'Year',
+            'Director',
             'imdbID',
             'Runtime',
             'Poster',
@@ -35,6 +39,9 @@ export function isMovieRatingResponse(
     );
 }
 
+const RERELEASE_SUFFIX =
+    /\s*\(\s*(?:\d+\s*(?:[ºª°]|st|nd|rd|th)?\s*(?:anivers[áa]rio|anniversary)|relan[çc]amento|re-?release)\s*\)\s*$/i;
+
 export function cleanMovieTitle(movieName: string) {
     return movieName
         .trim()
@@ -42,16 +49,99 @@ export function cleanMovieTitle(movieName: string) {
             /^(?:pr[ée][ -]estreia\s+com\s+debate|sess[ãa]o\s+(?:de\s+)?(?:debate|especial))\s*:\s*/i,
             '',
         )
-        .replace(
-            /\s*\(\s*(?:\d+\s*(?:[ºª°]|st|nd|rd|th)?\s*(?:anivers[áa]rio|anniversary)|relan[çc]amento|re-?release)\s*\)\s*$/i,
-            '',
-        )
+        .replace(RERELEASE_SUFFIX, '')
         .trim()
         .replace(/\s+/g, ' ');
 }
 
-export function movieRatingKey(movieName: string) {
-    return cleanMovieTitle(movieName).toLowerCase();
+export function normalizeRatingLookup(
+    movie: string | MovieRatingLookup,
+): MovieRatingLookup {
+    const lookup = typeof movie === 'string' ? { title: movie } : movie;
+    const title = cleanMovieTitle(lookup.title);
+    const originalTitle = cleanMovieTitle(lookup.originalTitle || '');
+    const rerelease =
+        RERELEASE_SUFFIX.test(lookup.title) ||
+        RERELEASE_SUFFIX.test(lookup.originalTitle || '');
+    const director = lookup.director?.trim().replace(/\s+/g, ' ');
+    return {
+        title,
+        ...(originalTitle && originalTitle.toLowerCase() !== title.toLowerCase()
+            ? { originalTitle }
+            : {}),
+        ...(lookup.releaseYear !== undefined && !rerelease
+            ? { releaseYear: lookup.releaseYear }
+            : {}),
+        ...(director ? { director } : {}),
+        ...(lookup.runtimeMinutes !== undefined
+            ? { runtimeMinutes: lookup.runtimeMinutes }
+            : {}),
+    };
+}
+
+export function movieRatingLookup(
+    movie: Pick<
+        Movie,
+        'title' | 'originalTitle' | 'premiereDate' | 'director' | 'duration'
+    >,
+): MovieRatingLookup {
+    const year = movie.premiereDate?.localDate?.match(/^(\d{4})-/)?.[1];
+    const runtime = Number(movie.duration);
+    return normalizeRatingLookup({
+        title: movie.title,
+        originalTitle: movie.originalTitle || undefined,
+        ...(year ? { releaseYear: Number(year) } : {}),
+        director: movie.director || undefined,
+        ...(Number.isInteger(runtime) && runtime > 0
+            ? { runtimeMinutes: runtime }
+            : {}),
+    });
+}
+
+export function isMovieRatingLookup(value: unknown): value is MovieRatingLookup {
+    return (
+        isRecord(value) &&
+        typeof value.title === 'string' &&
+        Boolean(cleanMovieTitle(value.title)) &&
+        (value.originalTitle === undefined ||
+            typeof value.originalTitle === 'string') &&
+        (value.director === undefined || typeof value.director === 'string') &&
+        (value.runtimeMinutes === undefined ||
+            (typeof value.runtimeMinutes === 'number' &&
+                Number.isInteger(value.runtimeMinutes) &&
+                value.runtimeMinutes > 0)) &&
+        (value.releaseYear === undefined ||
+            (typeof value.releaseYear === 'number' &&
+                Number.isInteger(value.releaseYear) &&
+                value.releaseYear >= 1000 &&
+                value.releaseYear <= 9999))
+    );
+}
+
+export function movieRatingKey(movie: string | MovieRatingLookup) {
+    const { title, originalTitle, releaseYear, director, runtimeMinutes } =
+        normalizeRatingLookup(movie);
+    if (!title) return '';
+    return originalTitle || releaseYear !== undefined || director || runtimeMinutes
+        ? JSON.stringify([
+              title.toLowerCase(),
+              originalTitle?.toLowerCase() || '',
+              releaseYear ?? null,
+              ...(director || runtimeMinutes
+                  ? [director?.toLowerCase() || '', runtimeMinutes ?? null]
+                  : []),
+          ])
+        : title.toLowerCase();
+}
+
+export function movieTitleKey(title: string) {
+    return cleanMovieTitle(title)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/&/g, ' and ')
+        .replace(/[^\p{L}\p{N}]+/gu, ' ')
+        .trim();
 }
 
 export function movieRatingResult(rating: MovieRatingResponse | null): {

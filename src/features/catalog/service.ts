@@ -2,6 +2,7 @@ import { fetchJson } from '../../shared/http';
 import { parseMovies, type RatedMovie } from '../../shared/movies';
 import {
     movieRatingKey,
+    movieRatingLookup,
     movieRatingResult,
     RATING_BATCH_SIZE,
 } from '../../shared/ratings';
@@ -23,24 +24,26 @@ export async function enrichCatalog(
     signal: AbortSignal,
     onBatch: (ratings: Map<string, RatingResult>) => void,
 ) {
-    const names = [
-        ...new Set(
-            movies.map((movie) =>
-                movieRatingKey(movie.originalTitle || movie.title),
-            ),
-        ),
+    const lookups = [
+        ...new Map(
+            movies.map((movie) => {
+                const lookup = movieRatingLookup(movie);
+                return [movieRatingKey(lookup), lookup] as const;
+            }),
+        ).values(),
     ];
-    for (let index = 0; index < names.length; index += RATING_BATCH_SIZE) {
+    for (let index = 0; index < lookups.length; index += RATING_BATCH_SIZE) {
         if (signal.aborted) return;
         const ratings = await Promise.all(
-            names.slice(index, index + RATING_BATCH_SIZE).map(async (name) => {
+            lookups.slice(index, index + RATING_BATCH_SIZE).map(async (lookup) => {
+                const key = movieRatingKey(lookup);
                 try {
                     return [
-                        name,
-                        movieRatingResult(await getMovieRating(name)),
+                        key,
+                        movieRatingResult(await getMovieRating(lookup)),
                     ] as const;
                 } catch {
-                    return [name, movieRatingResult(null)] as const;
+                    return [key, movieRatingResult(null)] as const;
                 }
             }),
         );

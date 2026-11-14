@@ -1,8 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import omdbRequest from '../../src/server/ratings/omdb';
-import { RATING_BATCH_SIZE } from '../../src/shared/ratings';
+import {
+    isMovieRatingLookup,
+    movieRatingKey,
+    RATING_BATCH_SIZE,
+} from '../../src/shared/ratings';
 import type {
     MovieRatingResponse,
+    MovieRatingLookup,
     MovieRatingsBatchResponse,
 } from '../../src/shared/ratingTypes';
 
@@ -13,25 +18,38 @@ export default async function handler(
     >,
 ) {
     if (req.method === 'POST') {
-        const movieNames: unknown = req.body?.movieNames;
+        const contextual = req.body?.movies !== undefined;
+        const movies: unknown = contextual ? req.body.movies : req.body?.movieNames;
         if (
-            !Array.isArray(movieNames) ||
-            !movieNames.length ||
-            movieNames.length > RATING_BATCH_SIZE ||
-            movieNames.some((name) => typeof name !== 'string' || !name.trim())
+            (contextual && req.body.movieNames !== undefined) ||
+            !Array.isArray(movies) ||
+            !movies.length ||
+            movies.length > RATING_BATCH_SIZE ||
+            movies.some((movie) =>
+                contextual
+                    ? !isMovieRatingLookup(movie)
+                    : typeof movie !== 'string' || !movie.trim(),
+            )
         ) {
             res.status(400).json({
-                error: `Provide between 1 and ${RATING_BATCH_SIZE} movie names`,
+                error: `Provide between 1 and ${RATING_BATCH_SIZE} ${contextual ? 'movies' : 'movie names'}`,
             });
             return;
         }
+        const lookups = new Map<string, string | MovieRatingLookup>();
+        for (const movie of movies as (string | MovieRatingLookup)[]) {
+            lookups.set(
+                contextual ? movieRatingKey(movie) : (movie as string),
+                movie,
+            );
+        }
         const ratings = await Promise.all(
-            [...new Set(movieNames as string[])].map(async (movieName) => {
+            [...lookups].map(async ([key, movie]) => {
                 try {
-                    return [movieName, await omdbRequest(movieName)] as const;
+                    return [key, await omdbRequest(movie)] as const;
                 } catch {
                     // One provider failure must not discard the rest of a batch.
-                    return [movieName, null] as const;
+                    return [key, null] as const;
                 }
             }),
         );

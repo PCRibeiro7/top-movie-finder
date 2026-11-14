@@ -3,7 +3,7 @@ import { fetchJson } from '../../shared/http';
 import type { CatalogLocation } from '../../shared/location';
 import type { RatedMovie } from '../../shared/movies';
 import type { OmdbMovieRating } from '../../shared/ratingTypes';
-import { movieRatingResult } from '../../shared/ratings';
+import { movieRatingLookup, movieRatingResult } from '../../shared/ratings';
 import { parseSessionDays, type SessionDay } from '../../shared/sessions';
 import type { RatingResult } from '../catalog/service';
 import { getMovieRating } from '../ratings/client';
@@ -49,7 +49,11 @@ export function useMovieDetails({
             ? movies.find((entry) => entry.id === selection.movieId)
             : undefined;
     const movieId = movie?.id;
-    const ratingTitle = movie?.originalTitle || movie?.title;
+    const ratingTitle = movie?.title;
+    const originalTitle = movie?.originalTitle;
+    const premiereDate = movie?.premiereDate?.localDate;
+    const director = movie?.director;
+    const duration = movie?.duration;
 
     function select(movieId: string) {
         controller.current?.abort();
@@ -80,7 +84,15 @@ export function useMovieDetails({
         const { signal } = request;
 
         // Rating requests are shared: cancel the subscription, not the cache fill.
-        void getMovieRating(ratingTitle)
+        void getMovieRating(
+            movieRatingLookup({
+                title: ratingTitle,
+                originalTitle,
+                premiereDate: { localDate: premiereDate },
+                director,
+                duration,
+            }),
+        )
             .then((rating) => {
                 if (signal.aborted) return;
                 setInfo(rating.Response === 'True' ? rating : undefined);
@@ -109,7 +121,18 @@ export function useMovieDetails({
                 if (!signal.aborted) setSessionStatus('error');
             });
         return () => request.abort();
-    }, [selection, movieId, ratingTitle, location, attemptId, onRating]);
+    }, [
+        selection,
+        movieId,
+        ratingTitle,
+        originalTitle,
+        premiereDate,
+        director,
+        duration,
+        location,
+        attemptId,
+        onRating,
+    ]);
 
     return {
         movie: movie ? movieDetails(movie, info) : null,
