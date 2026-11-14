@@ -1,4 +1,8 @@
-export default async function omdbRequest(movieTitle: string) {
+import { OmdbMovieRating } from "../types/OmdbMovieRating";
+
+export default async function omdbRequest(
+    movieTitle: string
+): Promise<OmdbMovieRating | { Error: string; Response: string }> {
     let api_key = process.env.OMDB_API_KEY;
     movieTitle = movieTitle.replaceAll('-', ' ').replaceAll(':', ' ');
 

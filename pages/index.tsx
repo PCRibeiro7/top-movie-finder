@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import { Grid, Typography } from '@mui/material';
 
@@ -39,6 +39,72 @@ export interface HomeState {
     trailer: Array<any>;
 }
 
+function getLocation(signal: AbortSignal): Promise<GeolocationPosition> {
+    return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+            reject(
+                new Error(
+                    'Seu navegador não oferece acesso à localização. Informe sua cidade abaixo.'
+                )
+            );
+            return;
+        }
+
+        const cleanup = () => {
+            clearTimeout(timeout);
+            signal.removeEventListener('abort', onAbort);
+        };
+        const onAbort = () => {
+            cleanup();
+            reject(new DOMException('Busca cancelada', 'AbortError'));
+        };
+        const timeout = setTimeout(() => {
+            cleanup();
+            reject(
+                new Error(
+                    'Não foi possível obter sua localização. Informe sua cidade ou tente novamente.'
+                )
+            );
+        }, 10000);
+
+        signal.addEventListener('abort', onAbort, { once: true });
+        if (signal.aborted) {
+            onAbort();
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                cleanup();
+                resolve(position);
+            },
+            (error) => {
+                cleanup();
+                reject(
+                    new Error(
+                        error.code === 1
+                            ? 'O acesso à localização foi bloqueado. Permita o acesso no navegador ou informe sua cidade.'
+                            : 'Sua localização está indisponível. Informe sua cidade ou tente novamente.'
+                    )
+                );
+            },
+            { timeout: 10000, maximumAge: 300000 }
+        );
+    });
+}
+
+async function fetchJson(url: string, signal: AbortSignal) {
+    const response = await fetch(url, {
+        signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]),
+    });
+    if (!response.ok) {
+        throw new Error(
+            'Não foi possível consultar os filmes para esta cidade. Confira a cidade e a UF ou tente novamente.'
+        );
+    }
+    return response.json();
+}
+
 const Home = () => {
     const [state, setState] = React.useState<HomeState>({
         movie: '',
@@ -70,50 +136,137 @@ const Home = () => {
     });
 
     const movieInfoTableRef = useRef<HTMLDivElement>(null);
-
-    const getLocation = useCallback(async () => {
-        let location = window.navigator && window.navigator.geolocation;
-        if (location) {
-            const promise = new Promise<GeolocationPosition>(
-                (resolve, reject) => {
-                    location.getCurrentPosition(
-                        (position) => {
-                            assignLocation(position);
-                            resolve(position);
-                        },
-                        () => {
-                            reject('err');
-                        }
-                    );
-                }
-            );
-
-            return await promise;
-        }
-    }, []);
+    const [loadError, setLoadError] = useState<string | null>(null);
+    const [loadingMessage, setLoadingMessage] = useState(
+        'Buscando sua localização...'
+    );
+    const [locationAttempt, setLocationAttempt] = useState(0);
+    const [manualLocation, setManualLocation] = useState<{
+        city: string;
+        state: string;
+    } | null>(null);
 
     useEffect(() => {
-        const init = async () => {
-            const position = await getLocation();
-            const reverseGeocodeResponse = await fetch(
-                `https://nominatim.openstreetmap.org/reverse.php?lat=${position?.coords.latitude}&lon=${position?.coords.longitude}&zoom=10&format=jsonv2`
-            );
-            const reverseGeocodeData = await reverseGeocodeResponse.json();
-            const city = reverseGeocodeData.name;
-            const state =
-                reverseGeocodeData.address['ISO3166-2-lvl4'].split('-')[1];
+        const controller = new AbortController();
+        const { signal } = controller;
+        setLoadError(null);
+        setLoadingMessage(
+            manualLocation
+                ? 'Carregando filmes...'
+                : 'Buscando sua localização...'
+        );
+        setState((previous) => ({ ...previous, movieCardsAreReady: false }));
 
-            const cityIdResponse = await fetch(
-                `/api/state?state=${state}&city=${city}`
-            );
-            const cityId = await cityIdResponse.json();
-            const moviesResponse = await fetch(`/api/movies?cityId=${cityId}`);
-            const moviesData = await moviesResponse.json();
-            await getImdbRantingbyTitle(moviesData, cityId);
+        const init = async () => {
+            try {
+                let location = manualLocation;
+                if (!location) {
+                    const position = await getLocation(signal);
+                    if (signal.aborted) return;
+                    setState((previous) => ({
+                        ...previous,
+                        currentGeographicPosition: {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                        },
+                    }));
+                    setLoadingMessage('Identificando sua cidade...');
+                    const data = await fetchJson(
+                        `https://nominatim.openstreetmap.org/reverse?lat=${position.coords.latitude}&lon=${position.coords.longitude}&zoom=10&format=jsonv2`,
+                        signal
+                    );
+                    const address = data.address;
+                    const city =
+                        address?.city ||
+                        address?.town ||
+                        address?.village ||
+                        address?.municipality ||
+                        data.name;
+                    const region = address?.['ISO3166-2-lvl4'];
+                    if (!city || !/^BR-[A-Z]{2}$/.test(region ?? '')) {
+                        throw new Error(
+                            'Não foi possível identificar uma cidade brasileira na sua localização. Informe sua cidade abaixo.'
+                        );
+                    }
+                    location = { city, state: region.slice(3) };
+                }
+
+                setLoadingMessage('Carregando filmes...');
+                const query = new URLSearchParams(location);
+                const cityId = await fetchJson(`/api/state?${query}`, signal);
+                if (typeof cityId !== 'string' || !cityId) {
+                    throw new Error(
+                        'Não encontramos cinemas nesta cidade. Confira a cidade e a UF.'
+                    );
+                }
+                const movies = await fetchJson(
+                    `/api/movies?cityId=${encodeURIComponent(cityId)}`,
+                    signal
+                );
+                if (!Array.isArray(movies)) {
+                    throw new Error(
+                        'Não foi possível carregar os filmes. Tente novamente.'
+                    );
+                }
+                if (signal.aborted) return;
+
+                setState((previous) => ({
+                    ...previous,
+                    availableMovies: movies,
+                    movieCardsAreReady: true,
+                    cardTotal: movies.length,
+                    cardFirst: 0,
+                    cityId,
+                }));
+
+                const ratedMovies = await Promise.all(
+                    movies.map(async (movie) => {
+                        try {
+                            const query = new URLSearchParams({
+                                movieName: movie.originalTitle || movie.title,
+                            });
+                            const rating = await fetchJson(
+                                `/api/rating?${query}`,
+                                signal
+                            );
+                            return {
+                                ...movie,
+                                imdbRating: rating?.imdbRating || 'N/A',
+                            };
+                        } catch {
+                            return { ...movie, imdbRating: 'N/A' };
+                        }
+                    })
+                );
+                if (signal.aborted) return;
+                ratedMovies.sort(
+                    (a, b) =>
+                        (parseFloat(b.imdbRating) || 0) -
+                        (parseFloat(a.imdbRating) || 0)
+                );
+                setState((previous) => ({
+                    ...previous,
+                    availableMovies: ratedMovies,
+                }));
+            } catch (error) {
+                if (signal.aborted) return;
+                setLoadError(
+                    error instanceof Error &&
+                        ![
+                            'TimeoutError',
+                            'TypeError',
+                            'SyntaxError',
+                            'AbortError',
+                        ].includes(error.name)
+                        ? error.message
+                        : 'Não foi possível concluir a busca. Confira sua conexão, informe sua cidade ou tente novamente.'
+                );
+            }
         };
 
         init();
-    }, [getLocation]);
+        return () => controller.abort();
+    }, [locationAttempt, manualLocation]);
 
     useEffect(() => {
         if (movieInfoTableRef.current) {
@@ -125,54 +278,6 @@ const Home = () => {
         }
     }, [state.movieId]);
 
-    function assignLocation(position: GeolocationPosition) {
-        setState((prevState) => ({
-            ...prevState,
-            currentGeographicPosition: {
-                latitude: position.coords.latitude,
-                longitude: position.coords.longitude,
-            },
-        }));
-    }
-    async function getImdbRantingbyTitle(
-        availableMovies: any[],
-        cityId: string
-    ) {
-        if (availableMovies) {
-            let newAvailableMovies = [...availableMovies];
-
-            for (const movie of newAvailableMovies) {
-                const res = await fetch(
-                    `/api/rating?movieName=${movie.originalTitle}`
-                );
-                const resJson = await res.json();
-
-                movie.imdbRating = resJson.imdbRating ?? '...';
-            }
-
-            newAvailableMovies.sort((a, b) => {
-                if (a.imdbRating === 'N/A' && b.imdbRating === 'N/A') {
-                    return 0;
-                }
-                if (a.imdbRating === 'N/A') {
-                    return 1;
-                }
-                if (b.imdbRating === 'N/A') {
-                    return -1;
-                }
-                return a.imdbRating > b.imdbRating ? -1 : 1;
-            });
-
-            setState((prevState) => ({
-                ...prevState,
-                availableMovies: newAvailableMovies,
-                movieCardsAreReady: true,
-                cardTotal: newAvailableMovies.length,
-                cityId: cityId,
-            }));
-        }
-    }
-
     return (
         <div style={{ minHeight: '100dvh', background: 'lightgray' }}>
             <MovieAppBar />
@@ -180,7 +285,19 @@ const Home = () => {
                 <Grid item xs={12}>
                     <Grid container justifyContent={'center'}>
                         <Filter state={state} setState={setState} />
-                        <MovieCards state={state} setState={setState} />
+                        <MovieCards
+                            state={state}
+                            setState={setState}
+                            loadError={loadError}
+                            loadingMessage={loadingMessage}
+                            onRetry={() => {
+                                setManualLocation(null);
+                                setLocationAttempt((attempt) => attempt + 1);
+                            }}
+                            onCitySubmit={(city, state) => {
+                                setManualLocation({ city, state });
+                            }}
+                        />
 
                         <div ref={movieInfoTableRef}></div>
                         {Object.entries(state.movieInfo).length !== 0 ? (

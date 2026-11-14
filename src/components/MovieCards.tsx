@@ -1,22 +1,38 @@
 import StarIcon from '@mui/icons-material/Star';
 import {
+    Alert,
     Button,
     CircularProgress,
     Grid,
     Paper,
     Slider,
+    TextField,
     Typography,
 } from '@mui/material';
-import { MouseEvent } from 'react';
+import { MouseEvent, useState } from 'react';
 import { HomeState } from '../../pages';
 import distanceCalculator from '../utils/distanceCalculator';
 
 type MovieCardsProps = {
     state: HomeState;
     setState: React.Dispatch<React.SetStateAction<HomeState>>;
+    loadError: string | null;
+    loadingMessage: string;
+    onRetry: () => void;
+    onCitySubmit: (city: string, state: string) => void;
 };
 
-const MovieCards = ({ state, setState }: MovieCardsProps) => {
+const MovieCards = ({
+    state,
+    setState,
+    loadError,
+    loadingMessage,
+    onRetry,
+    onCitySubmit,
+}: MovieCardsProps) => {
+    const [city, setCity] = useState('');
+    const [region, setRegion] = useState('');
+
     function concatenateSessionTimes(roomsArray: any[]) {
         let concatenatedTimesArray: any[] = [];
         if (roomsArray) {
@@ -103,10 +119,72 @@ const MovieCards = ({ state, setState }: MovieCardsProps) => {
     return (
         <Grid item xs={12} style={{ margin: '1%' }}>
             <Paper style={{ padding: '1%' }}>
-                {state.movieCardsAreReady ? (
+                {loadError ? (
+                    <div>
+                        <Alert severity="warning">{loadError}</Alert>
+                        <form
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                if (city.trim()) {
+                                    onCitySubmit(
+                                        city.trim(),
+                                        region.trim().toUpperCase()
+                                    );
+                                }
+                            }}
+                        >
+                            <Grid
+                                container
+                                spacing={2}
+                                alignItems="center"
+                                style={{ marginTop: '1%' }}
+                            >
+                                <Grid item xs={12} sm={6}>
+                                    <TextField
+                                        label="Cidade"
+                                        value={city}
+                                        onChange={(event) =>
+                                            setCity(event.target.value)
+                                        }
+                                        autoComplete="address-level2"
+                                        required
+                                        fullWidth
+                                    />
+                                </Grid>
+                                <Grid item xs={4} sm={2}>
+                                    <TextField
+                                        label="UF"
+                                        value={region}
+                                        onChange={(event) =>
+                                            setRegion(
+                                                event.target.value.toUpperCase()
+                                            )
+                                        }
+                                        inputProps={{
+                                            maxLength: 2,
+                                            pattern: '[A-Za-z]{2}',
+                                        }}
+                                        required
+                                        fullWidth
+                                    />
+                                </Grid>
+                                <Grid item xs={8} sm={4}>
+                                    <Button type="submit" variant="contained">
+                                        Buscar filmes
+                                    </Button>
+                                </Grid>
+                            </Grid>
+                        </form>
+                        <Button onClick={onRetry} style={{ marginTop: '1%' }}>
+                            Usar minha localização
+                        </Button>
+                    </div>
+                ) : state.movieCardsAreReady ? (
                     <div>
                         <Typography variant="h6">
-                            Selecione um Filme em Cartaz:
+                            {state.availableMovies.length
+                                ? 'Selecione um Filme em Cartaz:'
+                                : 'Nenhum filme em cartaz para esta cidade.'}
                         </Typography>
                         <Grid
                             container
@@ -255,7 +333,7 @@ const MovieCards = ({ state, setState }: MovieCardsProps) => {
                                 variant="h6"
                             >
                                 {' '}
-                                Carregando Filmes...
+                                {loadingMessage}
                             </Typography>
                         </Grid>
                         <Grid
