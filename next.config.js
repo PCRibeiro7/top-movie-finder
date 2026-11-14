@@ -1,4 +1,8 @@
-module.exports = {
+const { PHASE_DEVELOPMENT_SERVER } = require('next/constants');
+
+module.exports = (phase) => ({
+    // Production builds must not replace a running dev server's chunks.
+    distDir: phase === PHASE_DEVELOPMENT_SERVER ? '.next-dev' : '.next',
     webpack(config, { dev }) {
         if (dev && process.platform === 'win32') {
             config.watchOptions = {
@@ -13,4 +17,4 @@ module.exports = {
 
         return config;
     },
-};
+});

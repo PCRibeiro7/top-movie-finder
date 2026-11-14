@@ -6,6 +6,7 @@ module.exports = [
     {
         ignores: [
             '.next/**',
+            '.next-dev/**',
             'out/**',
             'build/**',
             'coverage/**',

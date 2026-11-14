@@ -51,7 +51,7 @@ npm run build
 npm start
 ```
 
-`npm start` requires a successful build. Build output lives in `.next/` and is ignored by Git. These scripts build and serve locally; they do not publish the site.
+`npm start` requires a successful build. Development output lives in `.next-dev/`; production builds and `npm start` use `.next/`. Both directories are ignored by Git and ESLint. Keeping them separate lets `npm run build` verify changes while the development server is running without replacing its compiled chunks. These scripts build and serve locally; they do not publish the site.
 
 ## Existing tests
 
@@ -82,6 +82,7 @@ Run the relevant checks for the behavior being changed. Live results depend on p
 | City has no results | City spelling/UF and Ingresso.com coverage; city lookup ignores case and accents |
 | Location cannot be obtained | Browser permission and Nominatim connectivity; use manual city/UF selection |
 | Certificate errors | Node version and operating-system certificate trust used by `.npmrc` |
+| Development API returns 500 with `Cannot find module` for a Next.js chunk after a build | Development and production must use separate output directories in [next.config.js](../next.config.js). Restart `npm run dev` once to adopt `.next-dev/` if the server was running before this configuration change. Do not delete `.next-dev/` while development is running |
 | Windows development watcher scans drive ancestors | Preserve the drive-root exclusion in [next.config.js](../next.config.js) |
 | A recently published score is missing | IMDb publishes its dataset daily; the server snapshot lasts 24 hours. Missing/unrated results last five minutes and successful scores thirty minutes |
 | First missing-score lookup is unavailable | Check the cold dataset download against the five-second lookup deadline. A timeout stays retryable; subsequent requests can reuse a completed shared snapshot |

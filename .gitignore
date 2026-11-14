@@ -58,6 +58,7 @@ typings/
 
 # next.js build output
 .next
+.next-dev
 
 # JetBrains IDE files
 /.idea
