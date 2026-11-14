@@ -1,4 +1,5 @@
 import styles from './MovieDetails.module.css';
+import { CircularProgress } from '@mui/material';
 import PlayArrowRounded from '@mui/icons-material/PlayArrowRounded';
 import StarRounded from '@mui/icons-material/StarRounded';
 import AccessTimeRounded from '@mui/icons-material/AccessTimeRounded';
@@ -47,7 +48,23 @@ export default function MovieInfo({
                         </span>
                     )}
                     {!(Number.isFinite(rating) && rating > 0) && (
-                        <span aria-busy={ratingLoading}>
+                        <span
+                            role="status"
+                            aria-busy={ratingLoading}
+                            className={
+                                ratingLoading
+                                    ? styles['detail-rating-pending']
+                                    : undefined
+                            }
+                        >
+                            {ratingLoading && (
+                                <CircularProgress
+                                    size={16}
+                                    color="inherit"
+                                    aria-hidden="true"
+                                    className={styles['rating-loading-indicator']}
+                                />
+                            )}
                             {movieRatingStatusText(
                                 ratingLoading ? undefined : movie.ratingStatus,
                             )}

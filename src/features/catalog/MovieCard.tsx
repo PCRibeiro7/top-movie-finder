@@ -1,9 +1,14 @@
 import styles from './Catalog.module.css';
+import { useId } from 'react';
+import { CircularProgress } from '@mui/material';
 import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded';
 import LocalMoviesOutlined from '@mui/icons-material/LocalMoviesOutlined';
 import StarRounded from '@mui/icons-material/StarRounded';
 import type { RatedMovie } from '../../shared/movies';
-import { movieRatingStatusText } from '../../shared/ratings';
+import {
+    isMovieRatingPending,
+    movieRatingStatusText,
+} from '../../shared/ratings';
 
 export default function MovieCard({
     movie,
@@ -12,11 +17,16 @@ export default function MovieCard({
     movie: RatedMovie;
     onSelect: (movieId: string) => void;
 }) {
+    const ratingId = useId();
+    const score = Number(movie.imdbRating);
+    const hasRating = Number.isFinite(score) && score > 0 && score <= 10;
+    const ratingPending = isMovieRatingPending(movie);
     return (
         <button
             className={styles['movie-card']}
             onClick={() => onSelect(movie.id)}
             aria-label={`Ver detalhes e sessões de ${movie.title}`}
+            aria-describedby={ratingId}
         >
             <div className={styles['poster-wrap']}>
                 <span className="poster-fallback">
@@ -34,20 +44,31 @@ export default function MovieCard({
                         }}
                     />
                 )}
-                {parseFloat(movie.imdbRating || '') > 0 && (
-                    <span className={styles['rating-badge']}>
+                {hasRating && (
+                    <span id={ratingId} className={styles['rating-badge']}>
                         <StarRounded />
                         {movie.imdbRating}
                         <small>IMDb</small>
                     </span>
                 )}
-                {!(parseFloat(movie.imdbRating || '') > 0) && (
+                {!hasRating && (
                     <span
+                        id={ratingId}
+                        aria-busy={ratingPending}
                         className={[
                             styles['rating-badge'],
                             styles['rating-badge-muted'],
+                            ratingPending ? styles['rating-badge-pending'] : '',
                         ].join(' ')}
                     >
+                        {ratingPending && (
+                            <CircularProgress
+                                size={14}
+                                color="inherit"
+                                aria-hidden="true"
+                                className={styles['rating-loading-indicator']}
+                            />
+                        )}
                         {movieRatingStatusText(movie.ratingStatus)}
                     </span>
                 )}

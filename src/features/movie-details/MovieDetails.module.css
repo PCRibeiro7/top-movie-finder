@@ -86,6 +86,12 @@
     width: 16px;
     height: 16px;
 }
+.detail-metadata .detail-rating-pending {
+    color: var(--accent);
+}
+.rating-loading-indicator {
+    flex-shrink: 0;
+}
 .detail-metadata .detail-rating {
     font-size: 16px;
     color: var(--text);

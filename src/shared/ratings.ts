@@ -1,4 +1,4 @@
-import type { Movie } from './movies';
+import type { Movie, RatedMovie } from './movies';
 import type { MovieRatingLookup, MovieRatingResponse } from './ratingTypes';
 import { isRecord } from './validation';
 
@@ -156,6 +156,16 @@ export function movieRatingResult(rating: MovieRatingResponse | null): {
     return Number.isFinite(score) && score > 0 && score <= 10
         ? { imdbRating: rating.imdbRating, ratingStatus: 'rated' }
         : { imdbRating: 'N/A', ratingStatus: 'unrated' };
+}
+
+export function isMovieRatingPending(
+    movie: Pick<RatedMovie, 'imdbRating' | 'ratingStatus'>,
+) {
+    const score = Number(movie.imdbRating);
+    return (
+        movie.ratingStatus === undefined &&
+        !(Number.isFinite(score) && score > 0 && score <= 10)
+    );
 }
 
 export function movieRatingStatusText(status?: MovieRatingStatus) {

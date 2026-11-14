@@ -203,6 +203,7 @@ export default function Home() {
                     <MovieCatalog
                         movies={movies}
                         totalCount={catalog.movies.length}
+                        pendingRatingCount={catalog.pendingRatingCount}
                         visibleCount={visibleCount}
                         ready={catalog.status === 'ready'}
                         loading={catalog.status === 'loading'}

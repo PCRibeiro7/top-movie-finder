@@ -1,5 +1,5 @@
 import styles from './Catalog.module.css';
-import { Skeleton } from '@mui/material';
+import { CircularProgress, Skeleton } from '@mui/material';
 import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded';
 import LocalMoviesOutlined from '@mui/icons-material/LocalMoviesOutlined';
 import PlaceOutlined from '@mui/icons-material/PlaceOutlined';
@@ -11,6 +11,7 @@ import MovieCard from './MovieCard';
 type Props = {
     movies: RatedMovie[];
     totalCount: number;
+    pendingRatingCount: number;
     visibleCount: number;
     ready: boolean;
     loading: boolean;
@@ -26,6 +27,7 @@ type Props = {
 export default function MovieCatalog({
     movies,
     totalCount,
+    pendingRatingCount,
     visibleCount,
     ready,
     loading,
@@ -40,6 +42,28 @@ export default function MovieCatalog({
     const visibleMovies = movies.slice(0, visibleCount);
     return (
         <>
+            <div role="status" aria-live="polite" aria-atomic="true">
+                {ready && !error && pendingRatingCount > 0 && (
+                    <div className={styles['rating-loading-notice']}>
+                        <CircularProgress
+                            size={18}
+                            color="inherit"
+                            aria-hidden="true"
+                            className={styles['rating-loading-indicator']}
+                        />
+                        <div>
+                            <strong>Carregando notas do IMDb…</strong>
+                            <p>
+                                {pendingRatingCount}{' '}
+                                {pendingRatingCount === 1
+                                    ? 'filme com consulta pendente.'
+                                    : 'filmes com consulta pendente.'}{' '}
+                                Você já pode explorar os filmes e ver as sessões.
+                            </p>
+                        </div>
+                    </div>
+                )}
+            </div>
             {error ? (
                 <div className={styles['catalog-message']} role="alert">
                     <span className={styles['empty-icon']}>

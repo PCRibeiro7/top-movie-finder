@@ -12,7 +12,7 @@ require.extensions['.ts'] = (module, filename) => {
 
 const { selectCatalogMovies } = require('../src/features/catalog/model.ts');
 const { enrichCatalog } = require('../src/features/catalog/service.ts');
-const { movieRatingKey, movieRatingLookup } = require('../src/shared/ratings.ts');
+const { isMovieRatingPending, movieRatingKey, movieRatingLookup } = require('../src/shared/ratings.ts');
 const { movieDetails, sessionPresentation, sortSessions } = require('../src/features/movie-details/model.ts');
 const { parseSessionDays } = require('../src/shared/sessions.ts');
 
@@ -28,6 +28,18 @@ test('catalog filters accents and genres and sorts without changing provider ord
         assert.deepEqual(selectCatalogMovies(movies, { title: '', genre: '' }, sort).map((movie) => movie.id), expected);
     }
     assert.deepEqual(movies.map((movie) => movie.id), ['1', '2', '3']);
+});
+
+test('catalog rating loading excludes valid scores and completed lookup outcomes', () => {
+    for (const imdbRating of [undefined, 'N/A', '0', '11']) {
+        assert.equal(isMovieRatingPending({ imdbRating }), true);
+    }
+    for (const imdbRating of ['8.5', '10']) {
+        assert.equal(isMovieRatingPending({ imdbRating }), false);
+    }
+    for (const ratingStatus of ['rated', 'unrated', 'not-found', 'unavailable']) {
+        assert.equal(isMovieRatingPending({ ratingStatus }), false);
+    }
 });
 
 test('catalog enriches distinct movie contexts and ignores cancelled updates', async (t) => {

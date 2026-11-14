@@ -32,6 +32,7 @@ Provider types describe the fields the app consumes, including nullable optional
 - Automatic location obtains coordinates, calls Nominatim from the browser, and resolves a Brazilian city/UF. Manual selection and saved-city restoration have no coordinates.
 - The last successful city stays displayed and saved until the new catalog succeeds, including a valid empty catalog. Storage under `movie-finder-city` contains only `{ city, state }`; storage errors do not block use.
 - The catalog renders before enrichment. Each rating batch applies only to its originating attempt. Filter/sort changes reset visible count; rating completion can reorder the catalog without resetting pagination.
+- A pending-rating notice counts films across the full current catalog, independent of filters and pagination. Films without a valid score or completed lookup status show loading indicators on their cards; completed unrated, missing-title, and provider-error outcomes stop counting as pending. Movie details show a loading indicator during rating requests while keeping any available score visible.
 - Saved-city restoration does not scroll. Explicit searches reveal/focus results, honoring reduced motion.
 
 ## Movie details and sessions

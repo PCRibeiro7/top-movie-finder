@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CatalogLocation, CitySelection } from '../../shared/location';
 import type { RatedMovie } from '../../shared/movies';
-import { movieRatingKey, movieRatingLookup } from '../../shared/ratings';
+import {
+    isMovieRatingPending,
+    movieRatingKey,
+    movieRatingLookup,
+} from '../../shared/ratings';
 import {
     readSavedCity,
     resolveLocation,
@@ -134,6 +138,7 @@ export function useMovieCatalog() {
 
     return {
         ...state,
+        pendingRatingCount: state.movies.filter(isMovieRatingPending).length,
         selectCity: (city: CitySelection) => start({ mode: 'manual', city }),
         locate: () => start({ mode: 'geolocation' }),
         retry: () => {
