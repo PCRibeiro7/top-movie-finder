@@ -4,6 +4,7 @@ import PlayArrowRounded from '@mui/icons-material/PlayArrowRounded';
 import StarRounded from '@mui/icons-material/StarRounded';
 import AccessTimeRounded from '@mui/icons-material/AccessTimeRounded';
 import LocalMoviesOutlined from '@mui/icons-material/LocalMoviesOutlined';
+import OpenInNewRounded from '@mui/icons-material/OpenInNewRounded';
 import { movieRatingStatusText } from '../../shared/ratings';
 import type { MovieDetails } from './model';
 
@@ -14,7 +15,7 @@ export default function MovieInfo({
     movie: MovieDetails;
     ratingLoading: boolean;
 }) {
-    const { score: rating, durationText: duration, poster, trailer } = movie;
+    const { score: rating, durationText: duration, poster, trailer, imdbUrl } = movie;
     return (
         <section className={styles['movie-details']}>
             <div className={styles['detail-poster']}>
@@ -69,6 +70,17 @@ export default function MovieInfo({
                                 ratingLoading ? undefined : movie.ratingStatus,
                             )}
                         </span>
+                    )}
+                    {imdbUrl && (
+                        <a
+                            className={styles['imdb-link']}
+                            href={imdbUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={`Ver ${movie.title} no IMDb (abre em nova aba)`}
+                        >
+                            Ver no IMDb <OpenInNewRounded />
+                        </a>
                     )}
                     {Number(movie.metascore) > 0 && (
                         <span>{movie.metascore} Metascore</span>

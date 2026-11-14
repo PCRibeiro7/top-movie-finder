@@ -111,8 +111,12 @@ function trailerUrl(raw?: string) {
 
 export function movieDetails(movie: RatedMovie, info?: OmdbMovieRating) {
     const score = Number(info?.imdbRating || movie.imdbRating);
+    const imdbID = [info?.imdbID, movie.imdbID].find(
+        (id) => id && /^tt\d+$/.test(id),
+    );
     return {
         ...movie,
+        imdbUrl: imdbID ? `https://www.imdb.com/title/${imdbID}/` : undefined,
         score: Number.isFinite(score) && score > 0 && score <= 10 ? score : NaN,
         durationText:
             Number(movie.duration) > 0

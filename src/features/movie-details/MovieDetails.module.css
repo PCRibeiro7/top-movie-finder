@@ -105,6 +105,24 @@
     font-weight: 400;
     color: var(--muted);
 }
+.imdb-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 44px;
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 600;
+    text-underline-offset: 4px;
+}
+.imdb-link:hover,
+.imdb-link:focus-visible {
+    text-decoration: underline;
+}
+.imdb-link svg {
+    width: 14px;
+    height: 14px;
+}
 .detail-metadata .content-rating {
     border: 1px solid #4b5842;
     border-radius: 4px;

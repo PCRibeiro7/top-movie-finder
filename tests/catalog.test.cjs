@@ -109,7 +109,7 @@ test('sessions reject malformed nested collections instead of leaving a dialog p
 });
 
 test('movie details preserve catalog metadata precedence and optional OMDb fallbacks', () => {
-    const info = { Response: 'True', imdbRating: '8.1', Runtime: '120 min', Poster: 'https://example.com/poster', Plot: 'OMDb', Awards: 'N/A' };
+    const info = { Response: 'True', imdbRating: '8.1', imdbID: 'tt11826250', Runtime: '120 min', Poster: 'https://example.com/poster', Plot: 'OMDb', Awards: 'N/A' };
     const movie = { id: '1', title: 'Filme', duration: '90', synopsis: 'Ingresso', images: [{ url: 'https://example.com/catalog' }], trailers: [{ url: 'www.example.com/trailer' }] };
     const details = movieDetails(movie, info);
     assert.equal(details.durationText, '90 min');
@@ -117,9 +117,12 @@ test('movie details preserve catalog metadata precedence and optional OMDb fallb
     assert.equal(details.synopsis, 'Ingresso');
     assert.equal(details.trailer, 'https://www.example.com/trailer');
     assert.equal(details.awards, '');
+    assert.equal(details.imdbUrl, 'https://www.imdb.com/title/tt11826250/');
     const fallback = movieDetails({ id: '2', title: 'Outro' }, info);
     assert.equal(fallback.durationText, '120 min');
     assert.equal(fallback.synopsis, 'OMDb');
     assert.equal(movieDetails({ id: '3', title: 'Sem dados' }).poster, '');
+    assert.equal(movieDetails({ ...movie, imdbID: 'tt1234567' }).imdbUrl, 'https://www.imdb.com/title/tt1234567/');
+    assert.equal(movieDetails(movie, { ...info, imdbID: 'N/A' }).imdbUrl, undefined);
     assert.equal(Number.isNaN(movieDetails(movie, { ...info, imdbRating: '11' }).score), true);
 });
