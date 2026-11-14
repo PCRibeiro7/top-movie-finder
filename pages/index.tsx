@@ -26,6 +26,7 @@ export default function Home() {
     });
     const [sort, setSort] = useState<MovieSort>('rating');
     const [visibleCount, setVisibleCount] = useState(CATALOG_PAGE_SIZE);
+    const [filterAttemptId, setFilterAttemptId] = useState(catalog.attemptId);
     const scrollToResults = useRef(false);
     const details = useMovieDetails({
         movies: catalog.movies,
@@ -38,10 +39,11 @@ export default function Home() {
         ? `${catalog.location.city}, ${catalog.location.state}`
         : '';
 
-    useEffect(() => {
+    if (filterAttemptId !== catalog.attemptId) {
+        setFilterAttemptId(catalog.attemptId);
         setFilter({ title: '', genre: '' });
         setVisibleCount(CATALOG_PAGE_SIZE);
-    }, [catalog.attemptId]);
+    }
 
     useEffect(() => {
         if (

@@ -44,6 +44,8 @@ The typecheck script runs the installed compiler with `--noEmit --incremental fa
 
 `npm run lint` uses the ESLint CLI and `eslint.config.cjs`. The configuration preserves the Next/Core Web Vitals and Prettier rules and prevents browser features and shared contracts from importing server or route modules.
 
+The lint configuration uses Next.js 16's native flat configuration. ESLint 9.39.5 is retained because the current React, import, and accessibility plugins do not all accept ESLint 10 under strict peer checks. Upstream marks ESLint 9 unsupported; moving to ESLint 10 requires compatible plugins. TypeScript 6.0.3 retains the compiler API required by these tools and the test require hook; TypeScript 7 currently does not expose that API. Node type declarations follow the Node.js 24 runtime. The app uses bundler module resolution, explicitly includes Node globals, and uses the React automatic JSX runtime (`react-jsx`) required by Next.js 16.
+
 For runtime or configuration changes, check the production build and run it locally:
 
 ```sh
@@ -52,6 +54,8 @@ npm start
 ```
 
 `npm start` requires a successful build. Development output lives in `.next-dev/`; production builds and `npm start` use `.next/`. Both directories are ignored by Git and ESLint. Keeping them separate lets `npm run build` verify changes while the development server is running without replacing its compiled chunks. These scripts build and serve locally; they do not publish the site.
+
+Development and production builds explicitly use Webpack (`next dev --webpack` and `next build --webpack`). This preserves the Windows watcher exclusion; Next.js 16 otherwise defaults to Turbopack. Stop this project's development server before running `npm ci` on Windows, because its native compiler binary cannot be replaced while in use. Restart the server after installation.
 
 ## Existing tests
 

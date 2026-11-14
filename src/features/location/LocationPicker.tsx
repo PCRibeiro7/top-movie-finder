@@ -1,5 +1,5 @@
 import styles from './LocationPicker.module.css';
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useState } from 'react';
 import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded';
 import MyLocationRounded from '@mui/icons-material/MyLocationRounded';
 import PlaceOutlined from '@mui/icons-material/PlaceOutlined';
@@ -49,15 +49,17 @@ export default function LocationPicker({
     location,
     selectedLocation,
 }: Props) {
-    const [city, setCity] = useState('');
-    const [region, setRegion] = useState('');
+    const [city, setCity] = useState(selectedLocation?.city ?? '');
+    const [region, setRegion] = useState(selectedLocation?.state ?? '');
+    const [previousLocation, setPreviousLocation] = useState(selectedLocation);
 
-    useEffect(() => {
+    if (selectedLocation !== previousLocation) {
+        setPreviousLocation(selectedLocation);
         if (selectedLocation) {
             setCity(selectedLocation.city);
             setRegion(selectedLocation.state);
         }
-    }, [selectedLocation]);
+    }
 
     function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();

@@ -2,7 +2,7 @@
 
 ## Boundaries and ownership
 
-This is a single-page Next.js 15 Pages Router app with React 18 and MUI 6. There is no database, Redux store, service worker, or background synchronization job.
+This is a single-page Next.js 16 Pages Router app with React 19, TypeScript 6, and MUI 9. There is no database, Redux store, service worker, or background synchronization job.
 
 | Area | Responsibility |
 | --- | --- |

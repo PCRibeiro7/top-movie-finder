@@ -8,7 +8,7 @@
 
 ## Project boundaries
 
-- This is a Next.js 15 **Pages Router** app with React 18, MUI 6, and TypeScript application code. Use the existing `pages/` structure.
+- This is a Next.js 16 **Pages Router** app with React 19, MUI 9, and TypeScript 6 application code. Use the existing `pages/` structure.
 - The interface targets Brazilian cinema audiences. Preserve Portuguese copy, Brazilian city/UF selection, BRL prices, and distances in kilometers.
 - `pages/index.tsx` composes feature hooks and owns filters, catalog sorting, pagination, and focus/scroll behavior. Keep workflow state in the feature hooks; there is no Redux store or service worker.
 - Ingresso.com provides listings and sessions. OMDb provides displayed IMDb scores, with the official daily IMDb dataset as a personal/noncommercial fallback. TMDB only resolves titles to IMDb IDs; never display its scores as IMDb scores.
@@ -44,6 +44,8 @@
 
 Use Node.js 24 LTS and npm (declared version: `11.19.1`). Keep `package-lock.json` as the dependency lockfile and retain the existing `.npmrc` settings unless the task calls for changing them.
 
+Keep Webpack enabled in development and builds so the Windows watcher exclusion applies. TypeScript 6 provides the compiler API used by the test hook and lint tooling; TypeScript 7 currently does not. ESLint 9 is retained for the lint plugins' peer requirements, although upstream marks that release unsupported; upgrading it requires compatible plugins.
+
 ```sh
 npm test
 npm run lint
@@ -60,3 +62,13 @@ For runtime/configuration changes, run `npm run build`; for UI changes, follow t
 Before changing tests, read the existing suite. Prefer strengthening a related case; keep its order, names, mocks, assertions, and setup style. The suite uses Node's built-in test runner, `node:assert/strict`, and a TypeScript require hook. Add only coverage needed for changed behavior; do not introduce another framework or shared helpers without a concrete need.
 
 Keep these docs in sync when commands, environment variables, API contracts, or rating behavior change. Report which checks ran and any checks that could not run.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

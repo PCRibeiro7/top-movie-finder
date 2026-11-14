@@ -7,7 +7,7 @@
 - Open movie details, trailers, cinema showtimes, and available prices. Approximate cinema distances appear when geolocation is available.
 - Load the catalog first and enrich ratings in the background, with distinct loading, missing-title, unrated, and provider-error states.
 
-Built with Next.js 15 (Pages Router), React 18, TypeScript, and MUI 6. The active app uses React hooks for state and Next.js API routes for provider requests.
+Built with Next.js 16 (Pages Router), React 19, TypeScript 6, and MUI 9. The active app uses React hooks for state and Next.js API routes for provider requests.
 
 ## Quick start
 
