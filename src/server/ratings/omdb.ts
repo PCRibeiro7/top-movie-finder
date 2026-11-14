@@ -99,7 +99,19 @@ async function fetchRating(
         const lookup = normalizeRatingLookup(movie);
         const title = lookup.originalTitle || lookup.title;
         if (!title) return { Response: 'False', Error: 'Movie not found!' };
-        let rating = await omdbJson({ t: title }, signal);
+        let rating: MovieRatingResponse;
+        try {
+            rating = await omdbJson({ t: title }, signal);
+        } catch (error) {
+            signal.throwIfAborted();
+            if (!process.env.TMDB_API_KEY?.trim()) throw error;
+            const imdbId = await findMovieImdbId(lookup, signal);
+            if (!imdbId) throw error;
+            // Skip another OMDb request after its initial lookup failed.
+            const score = await imdbRating(imdbId, signal);
+            if (!score) throw error;
+            return { Response: 'True', imdbID: imdbId, imdbRating: score };
+        }
         const matching = matchingRating(rating, lookup);
         if (matching && movieRatingResult(rating).ratingStatus === 'rated') {
             return rating;

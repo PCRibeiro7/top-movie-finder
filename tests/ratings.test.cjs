@@ -290,6 +290,7 @@ test('provider fills IMDb scores, preserves matching metadata, and resolves loca
     t.mock.method(Date, 'now', () => now);
     let downloads = 0;
     const searches = [];
+    const lookups = [];
     t.mock.method(global, 'fetch', async (url) => {
         const { hostname, pathname, searchParams } = new URL(url);
         if (hostname === 'datasets.imdbws.com') {
@@ -298,8 +299,12 @@ test('provider fills IMDb scores, preserves matching metadata, and resolves loca
         }
         if (hostname === 'www.omdbapi.com') {
             const title = searchParams.get('t');
+            lookups.push(title || searchParams.get('i'));
             if (title === 'Feito Pipa') {
                 return Response.json({ Response: 'True', Title: title, Year: '2026', imdbID: 'tt11826250', imdbRating: 'N/A', Plot: 'Matching OMDb synopsis' });
+            }
+            if (title === '100 Dias') {
+                return Response.json({ Response: 'False', Error: 'Request limit reached!' });
             }
             if (title === 'Soudain') {
                 return Response.json({ Response: 'True', Title: title, Year: '2007', imdbID: 'tt3210562', imdbRating: '8.0', Plot: 'Wrong film' });
@@ -352,6 +357,9 @@ test('provider fills IMDb scores, preserves matching metadata, and resolves loca
     assert.ok(searches.includes('Soudain'));
     assert.ok(searches.includes('Boiúna – Terror No Amazonas'));
     assert.equal(downloads, 1);
+    assert.deepEqual(await omdbRequest({ title: '100 Dias', releaseYear: 2026 }), ratings[1]);
+    assert.equal(lookups.filter((title) => title === '100 Dias').length, 1);
+    assert.equal(lookups.includes('tt15006536'), false);
 });
 
 test('provider distinguishes directors and runtimes and recovers missing IMDb links through exact canonical titles', async (t) => {
@@ -456,6 +464,9 @@ test('provider retries resolver failures immediately and refreshes films without
             return new Response(gzipSync('tconst\taverageRating\tnumVotes\ntt0000001\t5.0\t10\n'));
         }
         if (hostname === 'www.omdbapi.com') {
+            if (searchParams.get('t') === 'Quota retry') {
+                return Response.json({ Response: 'False', Error: 'Request limit reached!' });
+            }
             return Response.json(searchParams.has('i')
                 ? { Response: 'True', imdbRating: attempts === 2 ? 'N/A' : '7.4' }
                 : { Response: 'False', Error: 'Movie not found!' });
@@ -464,9 +475,10 @@ test('provider retries resolver failures immediately and refreshes films without
         assert.equal(options.headers.Authorization, 'Bearer eyJtest-read-access-token');
         if (pathname === '/3/search/movie') {
             attempts++;
+            const title = searchParams.get('query');
             return attempts === 1
                 ? Response.json({ status_message: 'Invalid API key' }, { status: 401 })
-                : Response.json({ results: [{ id: 7, title: 'Resolver retry', original_title: 'Resolver retry' }] });
+                : Response.json({ results: [{ id: 7, title, original_title: title }] });
         }
         return Response.json({ imdb_id: 'tt1234567' });
     });
@@ -478,6 +490,9 @@ test('provider retries resolver failures immediately and refreshes films without
     now += RATING_MISS_CACHE_TTL + 1;
     assert.equal((await omdbRequest('Resolver retry')).imdbRating, '7.4');
     assert.equal(attempts, 3);
+    await assert.rejects(omdbRequest('Quota retry'), /Rating provider unavailable/);
+    await assert.rejects(omdbRequest('Quota retry'), /Rating provider unavailable/);
+    assert.equal(attempts, 5);
 });
 
 test('API isolates provider failures, caches missing movies, and reuses batch results for GET', async (t) => {

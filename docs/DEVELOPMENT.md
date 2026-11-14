@@ -24,6 +24,8 @@ Do not prefix these names with `NEXT_PUBLIC_`. Keep actual values out of source,
 
 Missing OMDb scores fall back to [IMDb's official daily dataset](https://data.imdb.com/non-commercial-datasets/), for personal/noncommercial use only. No extra key or setup is required. Allow server-side HTTPS access to `datasets.imdbws.com`; a cold process downloads about 9 MB compressed and retains about 30 MB of decoded TSV data in memory for 24 hours. Each server process has its own snapshot.
 
+If OMDb's initial request fails because of quota exhaustion or another provider error, recovery requires `TMDB_API_KEY` to resolve a verified IMDb ID. The server skips a second OMDb request and reads the dataset within the existing five-second lookup deadline. If no ID or dataset score is available, or recovery fails, the result remains a retryable provider error rather than a cached missing/unrated film.
+
 Allow HTTPS access to `v3.sg.media-imdb.com` for the public IMDb title-suggestion fallback when a TMDB film lacks an IMDb link. Director/runtime evidence distinguishes ambiguous titles and corroborates alternate names. Rereleases and anniversary listings ignore the new cinema year when matching the original film.
 
 The repository's [.npmrc](../.npmrc) enables `legacy-peer-deps` to accommodate the existing dependency graph. It also applies Node's `--use-system-ca` to npm scripts so provider HTTPS requests use operating-system trust. Keep these settings when reproducing local behavior.
