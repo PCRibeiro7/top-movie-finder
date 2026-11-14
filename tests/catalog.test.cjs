@@ -46,6 +46,7 @@ test('catalog enriches distinct movie contexts and ignores cancelled updates', a
     const movies = [
         { id: '1', title: 'O Sentido da Vida', originalTitle: 'Soudain', premiereDate: { localDate: '2026-10-13' }, director: 'Ryūsuke Hamaguchi', duration: '195' },
         { id: '2', title: 'O Sentido da Vida', originalTitle: ' ', premiereDate: { localDate: '2021-09-23' } },
+        { id: '3', title: 'Filme sem avaliação' },
     ];
     const controller = new AbortController();
     let cancel = false;
@@ -57,17 +58,19 @@ test('catalog enriches distinct movie contexts and ignores cancelled updates', a
         assert.deepEqual(JSON.parse(options.body), { movies: [
             { title: 'O Sentido da Vida', originalTitle: 'Soudain', releaseYear: 2026, director: 'Ryūsuke Hamaguchi', runtimeMinutes: 195 },
             { title: 'O Sentido da Vida', releaseYear: 2021 },
+            { title: 'Filme sem avaliação' },
         ] });
         return Response.json({ ratings: Object.fromEntries(movies.map((movie, index) => [
-            movieRatingKey(movieRatingLookup(movie)), { Response: 'True', imdbRating: index === 0 ? '7.6' : '6.0' },
+            movieRatingKey(movieRatingLookup(movie)), { Response: 'True', imdbRating: ['7.6', '6.0', 'N/A'][index], imdbID: ['tt11826250', 'N/A', 'tt1234567'][index] },
         ])) });
     });
     const updates = [];
     await enrichCatalog(movies, controller.signal, (ratings) => updates.push(ratings));
     assert.equal(updates.length, 1);
     assert.deepEqual(movies.map((movie) => updates[0].get(movieRatingKey(movieRatingLookup(movie)))), [
-        { imdbRating: '7.6', ratingStatus: 'rated' },
+        { imdbRating: '7.6', ratingStatus: 'rated', imdbID: 'tt11826250' },
         { imdbRating: '6.0', ratingStatus: 'rated' },
+        { imdbRating: 'N/A', ratingStatus: 'unrated', imdbID: 'tt1234567' },
     ]);
     cancel = true;
     await enrichCatalog(movies.map((movie) => ({ ...movie, title: movie.title + ' cancelled' })), controller.signal, (ratings) => updates.push(ratings));

@@ -19,6 +19,7 @@ export type Movie = {
 };
 
 export type RatedMovie = Movie & {
+    imdbID?: string;
     imdbRating?: string;
     ratingStatus?: MovieRatingStatus;
 };

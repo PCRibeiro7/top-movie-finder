@@ -145,6 +145,7 @@ export function movieTitleKey(title: string) {
 }
 
 export function movieRatingResult(rating: MovieRatingResponse | null): {
+    imdbID?: string;
     imdbRating: string;
     ratingStatus: MovieRatingStatus;
 } {
@@ -153,9 +154,14 @@ export function movieRatingResult(rating: MovieRatingResponse | null): {
         return { imdbRating: 'N/A', ratingStatus: 'not-found' };
     }
     const score = Number(rating.imdbRating);
-    return Number.isFinite(score) && score > 0 && score <= 10
-        ? { imdbRating: rating.imdbRating, ratingStatus: 'rated' }
-        : { imdbRating: 'N/A', ratingStatus: 'unrated' };
+    const hasRating = Number.isFinite(score) && score > 0 && score <= 10;
+    return {
+        imdbRating: hasRating ? rating.imdbRating : 'N/A',
+        ratingStatus: hasRating ? 'rated' : 'unrated',
+        ...(rating.imdbID && /^tt\d+$/.test(rating.imdbID)
+            ? { imdbID: rating.imdbID }
+            : {}),
+    };
 }
 
 export function isMovieRatingPending(

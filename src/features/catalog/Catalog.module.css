@@ -123,6 +123,9 @@
 }
 .movie-card {
     align-self: start;
+    min-width: 0;
+}
+.movie-card-button {
     display: block;
     width: 100%;
     min-width: 0;
@@ -148,8 +151,8 @@
     object-fit: cover;
     transition: transform 0.35s;
 }
-.movie-card:hover .movie-poster,
-.movie-card:focus-visible .movie-poster {
+.movie-card-button:hover .movie-poster,
+.movie-card-button:focus-visible .movie-poster {
     transform: scale(1.045);
 }
 .rating-badge {
@@ -222,8 +225,8 @@
     height: 18px;
     color: var(--accent);
 }
-.movie-card:hover .poster-action,
-.movie-card:focus-visible .poster-action {
+.movie-card-button:hover .poster-action,
+.movie-card-button:focus-visible .poster-action {
     opacity: 1;
     transform: translateY(0);
 }
@@ -244,6 +247,24 @@
     color: #929f86;
     margin-top: 5px;
     line-height: 1.6;
+}
+.imdb-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 44px;
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 600;
+    text-underline-offset: 4px;
+}
+.imdb-link:hover,
+.imdb-link:focus-visible {
+    text-decoration: underline;
+}
+.imdb-link svg {
+    width: 14px;
+    height: 14px;
 }
 .catalog-bottom {
     display: flex;
