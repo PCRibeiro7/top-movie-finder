@@ -8,9 +8,17 @@ import MovieAppBar from '../src/components/MovieAppBar';
 import MovieCards from '../src/components/MovieCards';
 import { getMovieRating } from '../src/requests/ratingRequester';
 import type { Movie } from '../src/types/Movie';
-import { movieRatingKey, RATING_BATCH_SIZE } from '../src/utils/movieRatings';
+import {
+    movieRatingKey,
+    movieRatingResult,
+    RATING_BATCH_SIZE,
+} from '../src/utils/movieRatings';
+import type { MovieRatingStatus } from '../src/utils/movieRatings';
 
-export type RatedMovie = Movie & { imdbRating?: string };
+export type RatedMovie = Movie & {
+    imdbRating?: string;
+    ratingStatus?: MovieRatingStatus;
+};
 export type SessionRow = {
     name: string;
     times: string[];
@@ -268,12 +276,13 @@ export default function Home() {
                                         const rating = await getMovieRating(name);
                                         return [
                                             name,
-                                            rating.Response === 'True'
-                                                ? rating.imdbRating
-                                                : 'N/A',
+                                            movieRatingResult(rating),
                                         ] as const;
                                     } catch {
-                                        return [name, 'N/A'] as const;
+                                        return [
+                                            name,
+                                            movieRatingResult(null),
+                                        ] as const;
                                     }
                                 }),
                         ),
@@ -287,7 +296,7 @@ export default function Home() {
                                     movie.originalTitle || movie.title,
                                 );
                                 return ratings.has(key)
-                                    ? { ...movie, imdbRating: ratings.get(key) }
+                                    ? { ...movie, ...ratings.get(key) }
                                     : movie;
                             },
                         ),

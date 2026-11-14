@@ -9,6 +9,7 @@ import SearchOffRounded from '@mui/icons-material/SearchOffRounded';
 import StarRounded from '@mui/icons-material/StarRounded';
 import type { HomeState, RatedMovie, SessionRow } from '../../pages';
 import { getMovieRating } from '../requests/ratingRequester';
+import { movieRatingResult, movieRatingStatusText } from '../utils/movieRatings';
 import distanceCalculator from '../utils/distanceCalculator';
 import MovieInfo from './MovieInfo';
 import SessionInfo from './SessionInfo';
@@ -124,6 +125,15 @@ export default function MovieCards({
         if (controller.signal.aborted) return;
         const sessionData =
             sessions.status === 'fulfilled' ? sessions.value : [];
+        const ratingResult =
+            rating.status === 'fulfilled'
+                ? movieRatingResult(rating.value)
+                : Number(movie.imdbRating) > 0
+                  ? {
+                        imdbRating: movie.imdbRating,
+                        ratingStatus: movie.ratingStatus,
+                    }
+                  : movieRatingResult(null);
         const { latitude, longitude } = state.currentGeographicPosition;
         const sessionTable: SessionRow[] = (sessionData[0]?.theaters || []).map(
             (theater: any) => {
@@ -165,6 +175,10 @@ export default function MovieCards({
         );
         setState((previous) => ({
             ...previous,
+            selectedMovie: { ...movie, ...ratingResult },
+            availableMovies: previous.availableMovies.map((entry) =>
+                entry.id === movie.id ? { ...entry, ...ratingResult } : entry,
+            ),
             movieInfo:
                 rating.status === 'fulfilled' &&
                 rating.value?.Response !== 'False'
@@ -329,6 +343,11 @@ export default function MovieCards({
                                             <StarRounded />
                                             {movie.imdbRating}
                                             <small>IMDb</small>
+                                        </span>
+                                    )}
+                                    {!(parseFloat(movie.imdbRating || '') > 0) && (
+                                        <span className="rating-badge rating-badge-muted">
+                                            {movieRatingStatusText(movie.ratingStatus)}
                                         </span>
                                     )}
                                     {movie.inPreSale && (

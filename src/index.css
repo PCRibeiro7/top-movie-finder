@@ -698,6 +698,12 @@ p {
     color: #bcc5b5;
     margin-left: 3px;
 }
+.rating-badge.rating-badge-muted {
+    max-width: calc(100% - 20px);
+    font-size: 10px;
+    font-weight: 400;
+    color: #bcc5b5;
+}
 .presale-badge {
     position: absolute;
     right: 9px;

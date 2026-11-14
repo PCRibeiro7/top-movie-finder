@@ -1,6 +1,9 @@
 import type { MovieRatingResponse } from '../types/OmdbMovieRating';
+import { findMovieImdbId } from './tmdbRequester';
 import {
+    cleanMovieTitle,
     movieRatingKey,
+    movieRatingResult,
     RATING_CACHE_LIMIT,
     RATING_CACHE_TTL,
     RATING_MISS_CACHE_TTL,
@@ -15,6 +18,27 @@ const waiting: (() => void)[] = [];
 const MAX_CONCURRENT_REQUESTS = 4;
 let activeRequests = 0;
 
+async function omdbJson(
+    lookup: { t: string } | { i: string },
+    signal: AbortSignal,
+): Promise<MovieRatingResponse> {
+    const params = new URLSearchParams({
+        ...lookup,
+        apikey: process.env.OMDB_API_KEY || '',
+    });
+    const response = await fetch(`https://www.omdbapi.com/?${params}`, { signal });
+    if (!response.ok) throw new Error('Rating provider unavailable');
+    const rating: MovieRatingResponse = await response.json();
+    if (
+        (rating.Response !== 'True' && rating.Response !== 'False') ||
+        (rating.Response === 'True' && typeof rating.imdbRating !== 'string') ||
+        (rating.Response === 'False' && rating.Error !== 'Movie not found!')
+    ) {
+        throw new Error('Rating provider unavailable');
+    }
+    return rating;
+}
+
 async function fetchRating(movieTitle: string): Promise<MovieRatingResponse> {
     if (activeRequests >= MAX_CONCURRENT_REQUESTS) {
         await new Promise<void>((resolve) => waiting.push(resolve));
@@ -22,22 +46,17 @@ async function fetchRating(movieTitle: string): Promise<MovieRatingResponse> {
         activeRequests++;
     }
     try {
-        const params = new URLSearchParams({
-            t: movieTitle.trim(),
-            apikey: process.env.OMDB_API_KEY || '',
-        });
-        const response = await fetch(`https://www.omdbapi.com/?${params}`, {
-            signal: AbortSignal.timeout(5000),
-        });
-        if (!response.ok) throw new Error('Rating provider unavailable');
-        const rating: MovieRatingResponse = await response.json();
+        // All fallback steps share a deadline instead of extending each lookup.
+        const signal = AbortSignal.timeout(5000);
+        const title = cleanMovieTitle(movieTitle);
+        if (!title) return { Response: 'False', Error: 'Movie not found!' };
+        const rating = await omdbJson({ t: title }, signal);
         if (
-            (rating.Response !== 'True' && rating.Response !== 'False') ||
-            (rating.Response === 'True' &&
-                typeof rating.imdbRating !== 'string') ||
-            (rating.Response === 'False' && rating.Error !== 'Movie not found!')
+            movieRatingResult(rating).ratingStatus !== 'rated' &&
+            process.env.TMDB_API_KEY
         ) {
-            throw new Error('Rating provider unavailable');
+            const imdbId = await findMovieImdbId(title, signal);
+            if (imdbId) return await omdbJson({ i: imdbId }, signal);
         }
         return rating;
     } finally {
@@ -66,9 +85,9 @@ export default function omdbRequest(
                 rating,
                 expiresAt:
                     Date.now() +
-                    (rating.Response === 'False'
-                        ? RATING_MISS_CACHE_TTL
-                        : RATING_CACHE_TTL),
+                    (movieRatingResult(rating).ratingStatus === 'rated'
+                        ? RATING_CACHE_TTL
+                        : RATING_MISS_CACHE_TTL),
             });
             if (cache.size > RATING_CACHE_LIMIT) {
                 cache.delete(cache.keys().next().value!);

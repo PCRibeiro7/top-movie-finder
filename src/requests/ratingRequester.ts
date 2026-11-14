@@ -4,6 +4,7 @@ import type {
 } from '../types/OmdbMovieRating';
 import {
     movieRatingKey,
+    movieRatingResult,
     RATING_BATCH_SIZE,
     RATING_CACHE_LIMIT,
     RATING_CACHE_TTL,
@@ -49,9 +50,9 @@ async function flushRatings() {
                     rating,
                     expiresAt:
                         Date.now() +
-                        (rating.Response === 'False'
-                            ? RATING_MISS_CACHE_TTL
-                            : RATING_CACHE_TTL),
+                        (movieRatingResult(rating).ratingStatus === 'rated'
+                            ? RATING_CACHE_TTL
+                            : RATING_MISS_CACHE_TTL),
                 });
                 if (cache.size > RATING_CACHE_LIMIT) {
                     cache.delete(cache.keys().next().value!);

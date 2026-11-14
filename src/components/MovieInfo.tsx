@@ -3,6 +3,7 @@ import StarRounded from '@mui/icons-material/StarRounded';
 import AccessTimeRounded from '@mui/icons-material/AccessTimeRounded';
 import LocalMoviesOutlined from '@mui/icons-material/LocalMoviesOutlined';
 import type { HomeState } from '../../pages';
+import { movieRatingStatusText } from '../utils/movieRatings';
 
 export default function MovieInfo({ state }: { state: HomeState }) {
     const movie = state.selectedMovie;
@@ -60,6 +61,9 @@ export default function MovieInfo({ state }: { state: HomeState }) {
                             {rating}
                             <small>/ 10 IMDb</small>
                         </span>
+                    )}
+                    {!(Number.isFinite(rating) && rating > 0) && (
+                        <span>{movieRatingStatusText(movie.ratingStatus)}</span>
                     )}
                     {Number(info.Metascore) > 0 && (
                         <span>{info.Metascore} Metascore</span>
